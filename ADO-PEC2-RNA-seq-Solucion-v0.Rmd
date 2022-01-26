@@ -431,6 +431,13 @@ Los resultados de un análisis de expresión diferencial se pueden extraer con l
 toptab <- topTable(fit.cont,coef=1,sort.by="p", number=nrow(fit.cont))
 head(toptab)
 ```
+
+El resultado se puede guardar en un archivo de texto para su posterior explotación.
+
+```{r writeTopTab1}
+write.csv(toptab, file="results/topTable_limmaVoom.csv")
+```
+
 ### Visualización de los resultados
 
 Para visualizar los resultados podemos usar un `volcanoPlot`:
@@ -438,6 +445,7 @@ Para visualizar los resultados podemos usar un `volcanoPlot`:
 ```{r volcano}
 volcanoplot(fit.cont,coef=1,highlight=100, main="COVID vs SANO")
 ```
+
 
 Con el fin de observar si existen perfiles de expresión diferenciados podemo realizar un mapa de colores con los genes más diferencialmente expresados.
 
@@ -493,6 +501,13 @@ Los resultados se almacenan en un objeto similar a la ' topTable' de `limma`.
 topTags_edge <- topTags(res, n=dim(log2count_norm)[1]) # todos los genes
 head(topTags_edge)
 ```
+
+El resultado se puede guardar en un archivo de texto para su posterior explotación.
+
+```{r writeTopTab2}
+write.csv(topTags_edge, file="results/topTable_edgeR.csv")
+```
+
  Podemos seleccionar los genes más diferencialmente expresados de la misma forma que hicimos con limma-voom
  
 ```{r}
