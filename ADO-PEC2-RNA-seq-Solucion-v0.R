@@ -1,17 +1,17 @@
 ## ----class.source = 'fold-hide', setup, include=FALSE---------------------
-library(knitr)
-library(rmdformats)
-
-## Global options
-options(max.print="75")
-opts_chunk$set(echo=FALSE,
-	             cache=TRUE,
-               prompt=FALSE,
-               tidy=TRUE,
-               comment=NA,
-               message=FALSE,
-               warning=FALSE)
-opts_knit$set(width=75)
+# library(knitr)
+# library(rmdformats)
+# 
+# ## Global options
+# options(max.print="75")
+# opts_chunk$set(echo=FALSE,
+# 	             cache=TRUE,
+#                prompt=FALSE,
+#                tidy=TRUE,
+#                comment=NA,
+#                message=FALSE,
+#                warning=FALSE)
+# opts_knit$set(width=75)
 
 
 ## ----instalaPaquetes, librerias, echo=TRUE, eval=FALSE--------------------
