@@ -4,7 +4,7 @@ author: "Alex Sanchez"
 date: "Enero 2022"
 output:
    html_document:
-    code_folding: hide
+    code_folding: show
     toc: true
     toc_depth: 3
     theme: darkly
@@ -21,7 +21,7 @@ library(rmdformats)
 
 ## Global options
 options(max.print="75")
-opts_chunk$set(echo=FALSE,
+opts_chunk$set(echo=TRUE,
 	             cache=TRUE,
                prompt=FALSE,
                tidy=TRUE,
@@ -131,8 +131,8 @@ dim(counts.keep)
 Aunque no sea más que un ejemplo basta con ver los dos primeros genes para comprobar como el primero no cumple la condición, en el grupo "SANO", mientras que los siguientes sí que la cumplen. Por lo tanto, al filtrar desaparece el primer gen de la matriz filtrada, pero no los dos siguientes.
 
 ```{r comparaMatrices}
-head(counts.CPM)
-head(counts.keep)
+round(head(counts.CPM), 3)
+round(head(counts.keep), 3)
 ```
 
 ## Uso de clases específicas para manejar los datos
@@ -151,7 +151,7 @@ dgeObj <- DGEList(counts = counts.keep,
                   group = selectedTargets$group, 
                   genes = rownames(counts.keep), 
                   remove.zeros = FALSE)
-dgeObj
+show(dgeObj)
 ```
 
 Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting". 
@@ -357,7 +357,6 @@ De hecho podemos usar la matriz de contrastes que construímos para limma voom, 
 
 ```{r}
 res <- glmQLFTest(fit, contrast = cont.matrix)
-head(res)
 ```
 
 Los resultados se almacenan en un objeto similar a la ' topTable' de `limma`.
