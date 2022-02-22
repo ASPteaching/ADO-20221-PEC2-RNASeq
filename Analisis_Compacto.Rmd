@@ -34,6 +34,11 @@ opts_knit$set(width=75)
 
 # Introducción
 
+Este estudio presenta un análisis básico de RNA-Seq con énfasis en las posibilidades de visualización de datos y resultados^.
+
+En su versión actual los gráficos son correctos pero poco elaborados. Para mejorarlos se utilizaran gráficos con `ggplot2` utilizando como modelo algunas de las propuestas del documento: https://github.com/UofABioinformaticsHub/DataVisualisaton_BIS2016.git
+
+
 ## Infraestructura informática para el análisis
 
 Este estudio se llevará a cabo usando R/Bioconductor por lo que es preciso tener instaladas un conjunto de librerías. Esto puede hacerse siguiendo el procedimiento descrito a continuación.
@@ -79,16 +84,20 @@ if(!dir.exists("results")) dir.create("results")
 
 # Los datos para el análisis
 
+Este análisis se basa en un estudio publicado recientemente [@Arunachalam2020] que investigaba la respuesta inmune a la infección con SARS-COV-2 desde un a perspectiva de biología de sistemas utilizando tecnología de secuenciación, RNA-Seq.
+
+Los datos se han depositado en el repositorio "[Gene Expression Omnibus (GEO)](https://www.ncbi.nlm.nih.gov/geo/)" con el identificador [GSE152418](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418).
+
 ## Lectura de la matriz de contajes
 
-Los datos de contajes se encuentran descargados desde GEO al archivo `Rawcounts.csv` desde donde se leeran.
+Los datos de contajes se han descargado desde l repositorio "[GEO]((https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418))" al archivo `Rawcounts.csv` que se utilizará como punto de partida para el análisis.
 
 ```{r}
 counts <- read.csv("datos/RawCounts.csv", row.names = 1)
 selectedCounts <- as.matrix(counts)
 ```
 
-Con la información sobre los grupos u otras covariables o variables auxiliares se creará un objeto (el habitual "targets") que debe estar _sincronizado_ con el anterior. 
+En la misma web se dispone de información los grupos y otras covariables o variables auxiliares. Con éstos se crea un objeto (habitualmente denominado "targets") que debe estar _sincronizado_ con el anterior, es decir, cuyas filas deben corresponderse con las columnas de la matriz de datos.
 
 ```{r creaTargets}
 sampleNames <- colnames(selectedCounts)
@@ -102,22 +111,26 @@ rownames(selectedTargets) <- selectedTargets[,1]
 
 ## Estandarización de los contajes 
 
-Además de filtrar, es bueno expresar los contajes en "CPMs" es decir "counts per million", lo que no modificará los resultados del filtraje, pero estandarizará los valores, lo que es útil y necesario para los análisis posteriores.
+Los datos de secuenciación pueden estar "desbalanceados" en el sentido que distintas muestras pueden contener un número distinto de secuencias, lo que puede inducir erróneamente a pensar que un gen se expresa más en una muestra que en otra, cuando esto se deba a esta diferencia global.
+
+Esto puede evitarse expresando los contajes como  "CPMs" es decir "counts per million", lo que no modificará los resultados de comparaciones posteriores, pero hará que las muestras sean comparables en número , lo que es útil y necesario para los análisis posteriores.
 
 ```{r getCPM}
 library(edgeR)
 selectedCounts[1:5,1:6]
+apply(selectedCounts,2, sum)
 counts.CPM <- cpm(selectedCounts)
 counts.CPM[1:5,1:6]
+apply(counts.CPM,2, sum)
 ```
 
 Una vez los datos estan como CPMs, se procede a filtrarlos, 
 
 ## Filtraje de genes poco expresados
 
-Los genes con recuentos muy bajos en todas las librerías proporcionan poca evidencia de expresión diferencial por lo que es habitual eliminar aquellos genes que, o bien son poco variables, o bien presentan poca o nula expresión en la mayoría de las muestras.
+Los genes con recuentos muy bajos en todas las librerías (es decir en todas las muestras) proporcionan poca evidencia de expresión diferencial, por lo que es habitual eliminar aquellos genes que, o bien varían muy poco entre grupos, o bien presentan poca o nula expresión en la mayoría de las muestras.
 
-En este caso, siguiendo las indicaciones proporcionadas, se opta por _conservar únicamente aquellos genes que presentan algún valor en, al menos, tres muestras **de cada grupo**_.
+En este caso, siguiendo un criterio habitual, se opta por _conservar únicamente aquellos genes que presentan algún valor en, al menos, tres muestras **de cada grupo**_.
 
 ```{r subsetThreshold}
 thresh <- counts.CPM > 0
@@ -137,11 +150,11 @@ round(head(counts.keep), 3)
 
 ## Uso de clases específicas para manejar los datos
 
-Cuando se trabaja con distintos objetos referidos a unos mismos datos, como la matriz de contajes y el objeto "targets",  es útil disponer de clases contenedoras que permitan trabajar con todos ellos a la vez, lo que no sólo facilita el trabajo sino que ayuda a evitar "desincronizaciones". 
+Cuando se trabaja con distintos objetos referidos a unos mismos datos, como la matriz de contajes y el objeto "targets",  es útil disponer de _contenedores_ que permitan trabajar con todos ellos a la vez, lo que no sólo facilita el trabajo sino que ayuda a evitar "desincronizaciones". 
 
 Éste es el caso de la clase `ExpressionSet` habitualmente utilizada con microarrays o de la clase que la generaliza, llamada  `SummarizedExperiment`. 
 
-Para datos de contaje es habitual usar una clase similar a `ExpressionSet` llamada `DGEList`" pensadas para manejar datos de contajes , definida en el paquete `edgeR`. Esta clase, más simple que las anteriores, utiliza listas para almacenar recuentos de "reads" e información asociada de tecnologías de secuenciación o expresión génica digital. Puede encontrarse información al respecto en la ayuda del paquete `edgeR`.
+Para datos de contaje es habitual usar una clase similar a `ExpressionSet` llamada `DGEList`" pensadas para manejar datos de contajes , definida en el paquete `edgeR`. Esta clase, más simple que las anteriores, utiliza listas para almacenar recuentos de "reads" e información asociada de tecnologías de secuenciación. Puede encontrarse información al respecto en la ayuda del paquete `edgeR`.
 
 ```{r makeDGEObj0}
 dgeObj <- DGEList(counts = counts.keep, 
@@ -154,39 +167,63 @@ dgeObj <- DGEList(counts = counts.keep,
 show(dgeObj)
 ```
 
-Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting". 
+<!-- Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting".  -->
 
-```{r makeDGEObj}
-dim(dgeObj)
-dgeObjShort<-dgeObj[,c(1:5, 11:15)]
-# Library size information is stored in the samples slot
-dgeObjShort$samples
-colnames(dgeObjShort$counts)
-```
+<!-- ```{r makeDGEObj} -->
+<!-- dim(dgeObj) -->
+<!-- dgeObjShort<-dgeObj[,c(1:5, 11:15)] -->
+<!-- # Library size information is stored in the samples slot -->
+<!-- dgeObjShort$samples -->
+<!-- colnames(dgeObjShort$counts) -->
+<!-- ``` -->
 
 Aunque podríamos haber creado el objeto a partir de todas las muestras, y haber realizado la extracción de genes y muestras posteriormente, hemos optado por no hacerlo para facilitar el seguimiento del proceso.
 
 ## Normalización
 
-Además de estandarizar los contajes, es importante eliminar otros los sesgos de composición entre librerías. Esto puede hacerse aplicando la normalización por el método TMM que genera un conjunto de factores de normalización, donde el producto de estos factores y los tamaños de librería definen el tamaño efectivo de la biblioteca. 
+Además de estandarizar los contajes, es importante eliminar otros sesgos de composición entre librerías. Esto puede hacerse aplicando la normalización por el método TMM que genera un conjunto de factores de normalización, tal que producto de estos factores y los tamaños de librería   (el número de secuencias de cada muestra) definen el _tamaño efectivo_ de dichas muestras, es decir el peso real que se les asignará en las comparaciones posteriores.
 
-La función `calcNormFactors`, de la librería `edgeR`, calcula los factores de normalización entre librerías.
+Aunque esto puede parecer artificial, no lo es porque la normalización tiene en cuenta otros factores, como el sesgo de composición entre librerías, que podrían hacer que los mismos valores en distintas muestras no reflejaran su importancia relativa.
+
+La función `calcNormFactors`, de la librería `edgeR`, calcula los factores de normalización mencionados.
 
 ```{r calcNormFactors}
 library(edgeR)
 dgeObj_norm <- calcNormFactors(dgeObj)
+head(dgeObj_norm$samples, 10)
 ```
 
 Esto no modificará la matriz de contajes, pero actualizará los factores de normalización en el objeto DGEList  (sus valores predeterminados son 1).
 
+```{r}
+head(dgeObj$samples)
+head(dgeObj_norm$samples)
+
+```
+
+
 Es decir, _aunque no se observen cambios en la matriz de contajes_, cuando se utilizan estos factores de normalización en algún cálculo la importancia de las distintas columnas se tendrá en cuenta.
 
-**Resumiendo**
+## Transformación logarítmica
 
-Los análisis que se realicen a continuación se basaran en la matriz de contajes, filtrada, estandarizada y normalizada, sobre la que además se toman logaritmo base dos.
+Las transformaciones anteriores buscan compensar el tamaño distinto de las librerías o la distinta composición de éstas, pero las distribuciones de los contajes en cada muestra son asimétricas.
+
+```{r}
+boxplot(dgeObj_norm$counts, 
+        col=dgeObj_norm$samples$cols,
+        las=2, cex.axis=0.7, main="Contajes normalizados", ylim=c(0,10000))
+```
+
+Para finalizar el preprocesado se toman logaritmo base dos de los contajes
 
 ```{r log2count_norm}
 log2count_norm <- cpm(dgeObj_norm, log=TRUE)
+```
+
+```{r}
+boxplot(log2count_norm, col=dgeObj_norm$samples$cols,
+        las=2, cex.axis=0.7, 
+        main="Contajes normalizados (log2))")
 ```
 
 **Esta será nuestra matriz de partida para los análisis siguientes,**
