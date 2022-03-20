@@ -10,8 +10,13 @@ output:
     theme: darkly
     highlight: textmate
     number_sections: true
+bibliography: "ADOreferences.bib"
 editor_options: 
   chunk_output_type: console
+# bibliography: references.bib
+# link-citations: yes
+# theme args should be one of: "default", "cerulean", "journal", "flatly", "darkly", "readable", "spacelab", "united", "cosmo", "lumen", "paper", "sandstone", "simplex", "yeti"
+# highlight arg should be one of: "default", "tango", "pygments", "kate", "monochrome", "espresso", "zenburn", "haddock", "breezedark", "textmate"
 ---
 
 
@@ -71,6 +76,17 @@ installifnot("ggvenn", BioC=FALSE)
 installifnot("pheatmap")
 installifnot("prettydoc", BioC=FALSE)
 installifnot("ggnewscale", BioC=FALSE)
+# Pels grafics que empren ggplot2
+installifnot("locfit", BioC=FALSE)
+installifnot("magrittr", BioC=FALSE)
+installifnot("statmod", BioC=FALSE)
+# Pel HeatMap Interactiu 
+installifnot("heatmaply")
+# Pel VolcanoPlot interactiu
+installifnot("here")
+installifnot("janitor") # Cleaning column names  
+installifnot("scales") # Transform axis scales   
+installifnot("ggrepel")
 ```
 
 Puede resultar útil, aunque no es para nada imprescindible, disponer de, al menos dos, directorios específicos:
@@ -79,7 +95,8 @@ Puede resultar útil, aunque no es para nada imprescindible, disponer de, al men
 
 ```{r directorios}
 if(!dir.exists("datos")) dir.create("datos")
-if(!dir.exists("results")) dir.create("results") 
+if(!dir.exists("results")) dir.create("results")
+if(!dir.exists("figures")) dir.create("figures")
 ```
 
 # Los datos para el análisis
@@ -198,7 +215,6 @@ Esto no modificará la matriz de contajes, pero actualizará los factores de nor
 ```{r}
 head(dgeObj$samples)
 head(dgeObj_norm$samples)
-
 ```
 
 
@@ -214,6 +230,8 @@ boxplot(dgeObj_norm$counts,
         las=2, cex.axis=0.7, main="Contajes normalizados", ylim=c(0,10000))
 ```
 
+
+
 Para finalizar el preprocesado se toman logaritmo base dos de los contajes
 
 ```{r log2count_norm}
@@ -226,7 +244,12 @@ boxplot(log2count_norm, col=dgeObj_norm$samples$cols,
         main="Contajes normalizados (log2))")
 ```
 
-**Esta será nuestra matriz de partida para los análisis siguientes,**
+```{r niceBoxPlot}
+source("./Rcode/niceBoxPlot.R")
+niceBoxPlot(log2count_norm)
+```
+
+**Esta será nuestra matriz de partida para los análisis siguientes**
 
 # Exploración de los datos
 
@@ -276,6 +299,13 @@ hc <-hclust(sampleDists)
 plot(hc,labels = colnames(log2count_norm),main = "Agrpamiento jerárquico de las muestras", cex=0.8)
 ```
 
+```{r  niceDendrogram}
+source("./Rcode/niceDendrogram.R")
+
+hc <- hclust(sampleDists,method = 'ward.D2')
+niceDendrogram (hc)
+```
+
 Una de las muestras COVID parece más similar a las saludables que a las otras COVID.
 
 ### Visualización en dimensión reducida
@@ -284,6 +314,11 @@ Una de las muestras COVID parece más similar a las saludables que a las otras C
 ```{r}
 col.status <- dgeObj_norm$samples$cols
 plotMDS(log2count_norm,col=col.status, main="Status", cex=0.7)
+```
+
+```{r niceMDS}
+source("./Rcode/niceMDS.R")
+niceMDS(dgeObj_norm)
 ```
 
 Como puede verse, el gráfico muestra la misma agrupación "natural" y el mismo comportamiento atípico de una muestra.
@@ -343,11 +378,24 @@ head(toptab)
 ```
 ### Visualización de los resultados
 
+#### Significación bioogica vs Significación Estadística
+
 Para visualizar los resultados podemos usar un `volcanoPlot`:
 
 ```{r volcano}
 volcanoplot(fit.cont,coef=1,highlight=100, main="COVID vs SANO")
 ```
+
+Es posible también crear Volcanoplots interactivos
+
+```{r niceInteractiveVolcano}
+source("./Rcode/niceInteractiveVolcano.R")
+niceInteractiveVolcano(fit.cont)
+
+```
+
+
+#### Perfiles de expresión
 
 Con el fin de observar si existen perfiles de expresión diferenciados podemo realizar un mapa de colores con los genes más diferencialmente expresados.
 
@@ -366,6 +414,16 @@ mat  <- log2count_norm[topGenesBas, ]
 mat  <- mat - rowMeans(mat)
 pheatmap(mat)
 ```
+
+También es posible crear un Heatmap interactivo:
+
+```{r niceInteractiveHeatMap}
+source("./Rcode/niceInteractiveHeatMap.R")
+mat  <- log2count_norm[topGenesBas, ]
+mat  <- mat - rowMeans(mat)
+niceInteractiveHeatMap(mat)
+```
+
 
 Los dos grupos estan diferenciados, sobre todo en un subconjunto de genes en donde las expresiones toman signos (colores) distintos. En otro de los grupos parece que, en el grupo de individuos sanos los genes diferencialmente expresados se encuentran sobre-expresados en el grupo COVID, y apenas expresados en el grupo sanos.
 
@@ -503,3 +561,6 @@ heatplot(ego2)
 term_similarity_matrix = pairwise_termsim(ego)
 emapplot(term_similarity_matrix, showCategory = 15, group_category=TRUE, group_legend=TRUE)
 ```
+
+# Referencias
+

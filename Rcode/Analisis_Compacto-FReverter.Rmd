@@ -1,0 +1,609 @@
+---
+title: "Analisis de Datos Omicos en COVID"
+author: "Alex Sanchez"
+date: "Enero 2022"
+output:
+   html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 3
+    theme: darkly
+    highlight: textmate
+    number_sections: true
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r class.source = 'fold-hide', setup, include=FALSE}
+library(knitr)
+library(rmdformats)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=FALSE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
+
+
+# Introducción
+
+## Infraestructura informática para el análisis
+
+Este estudio se llevará a cabo usando R/Bioconductor por lo que es preciso tener instaladas un conjunto de librerías. Esto puede hacerse siguiendo el procedimiento descrito a continuación.
+
+**El código que se presenta debería ejecutarse tan sólo una vez!**
+
+```{r instalaPaquetes, librerias, echo=TRUE, eval=FALSE}
+if(!require(BiocManager)){
+      install.packages("BiocManager", dep=TRUE)
+}
+
+installifnot <- function (pckgName, BioC=TRUE){
+  if(BioC){
+    if(!require(pckgName, character.only=TRUE)){
+      BiocManager::install(pckgName)
+    }
+  }else{
+    if(!require(pckgName, character.only=TRUE)){
+      install.packages(pckgName, dep=TRUE)
+    }
+  }
+}
+installifnot("limma")
+installifnot("edgeR")
+installifnot("org.Hs.eg.db")
+installifnot("clusterProfiler")
+installifnot("dplyr", BioC=FALSE)
+installifnot("gplots", BioC=FALSE)
+installifnot("ggvenn", BioC=FALSE)
+installifnot("pheatmap")
+installifnot("prettydoc", BioC=FALSE)
+installifnot("ggnewscale", BioC=FALSE)
+```
+
+
+Puede resultar útil, aunque no es para nada imprescindible, disponer de, al menos dos, directorios específicos:
+- `datos` (o un nombre similar) donde guardar y de donde cargar  los datos.
+- `results`o (o un nombre similar) donde escribir los resultados.
+
+```{r directorios}
+if(!dir.exists("datos")) dir.create("datos")
+if(!dir.exists("results")) dir.create("results") 
+```
+
+# Los datos para el análisis
+
+## Lectura de la matriz de contajes
+
+Los datos de contajes se encuentran descargados desde GEO al archivo `Rawcounts.csv` desde donde se leeran.
+
+```{r}
+counts <- read.csv("datos/RawCounts.csv", row.names = 1)
+selectedCounts <- as.matrix(counts)
+```
+
+Con la información sobre los grupos u otras covariables o variables auxiliares se creará un objeto (el habitual "targets") que debe estar _sincronizado_ con el anterior. 
+
+```{r creaTargets}
+sampleNames <- colnames(selectedCounts)
+grupos <- c(rep("COVID", 17), rep("SANO", 17))
+colores=c(rep("red", 17), rep("blue", 17))
+selectedTargets <- data.frame(samples=sampleNames, group=grupos, cols=colores)
+rownames(selectedTargets) <- selectedTargets[,1]
+```
+
+# Preprocesado de los datos
+
+## Estandarización de los contajes 
+
+Además de filtrar, es bueno expresar los contajes en "CPMs" es decir "counts per million", lo que no modificará los resultados del filtraje, pero estandarizará los valores, lo que es útil y necesario para los análisis posteriores.
+
+```{r getCPM}
+library(edgeR)
+selectedCounts[1:5,1:6]
+counts.CPM <- cpm(selectedCounts)
+counts.CPM[1:5,1:6]
+```
+
+Una vez los datos estan como CPMs, se procede a filtrarlos, 
+
+## Filtraje de genes poco expresados
+
+Los genes con recuentos muy bajos en todas las librerías proporcionan poca evidencia de expresión diferencial por lo que es habitual eliminar aquellos genes que, o bien son poco variables, o bien presentan poca o nula expresión en la mayoría de las muestras.
+
+En este caso, siguiendo las indicaciones proporcionadas, se opta por _conservar únicamente aquellos genes que presentan algún valor en, al menos, tres muestras **de cada grupo**_.
+
+```{r subsetThreshold}
+thresh <- counts.CPM > 0
+keep <- (rowSums(thresh[,1:10]) >= 3) &
+        (rowSums(thresh[,11:20]) >= 3)
+counts.keep <- counts.CPM[keep,]
+dim(counts.CPM)
+dim(counts.keep)
+```
+
+Aunque no sea más que un ejemplo basta con ver los dos primeros genes para comprobar como el primero no cumple la condición, en el grupo "SANO", mientras que los siguientes sí que la cumplen. Por lo tanto, al filtrar desaparece el primer gen de la matriz filtrada, pero no los dos siguientes.
+
+```{r comparaMatrices}
+head(counts.CPM)
+head(counts.keep)
+```
+
+## Uso de clases específicas para manejar los datos
+
+Cuando se trabaja con distintos objetos referidos a unos mismos datos, como la matriz de contajes y el objeto "targets",  es útil disponer de clases contenedoras que permitan trabajar con todos ellos a la vez, lo que no sólo facilita el trabajo sino que ayuda a evitar "desincronizaciones". 
+
+Éste es el caso de la clase `ExpressionSet` habitualmente utilizada con microarrays o de la clase que la generaliza, llamada  `SummarizedExperiment`. 
+
+Para datos de contaje es habitual usar una clase similar a `ExpressionSet` llamada `DGEList`" pensadas para manejar datos de contajes , definida en el paquete `edgeR`. Esta clase, más simple que las anteriores, utiliza listas para almacenar recuentos de "reads" e información asociada de tecnologías de secuenciación o expresión génica digital. Puede encontrarse información al respecto en la ayuda del paquete `edgeR`.
+
+```{r makeDGEObj0}
+dgeObj <- DGEList(counts = counts.keep, 
+                  lib.size = colSums(counts.keep),
+                  norm.factors = rep(1,ncol(counts.keep)), 
+                  samples = selectedTargets,
+                  group = selectedTargets$group, 
+                  genes = rownames(counts.keep), 
+                  remove.zeros = FALSE)
+dgeObj
+```
+
+Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting". 
+
+```{r makeDGEObj}
+dim(dgeObj)
+dgeObjShort<-dgeObj[,c(1:5, 11:15)]
+# Library size information is stored in the samples slot
+dgeObjShort$samples
+colnames(dgeObjShort$counts)
+```
+
+Aunque podríamos haber creado el objeto a partir de todas las muestras, y haber realizado la extracción de genes y muestras posteriormente, hemos optado por no hacerlo para facilitar el seguimiento del proceso.
+
+## Normalización
+
+Además de estandarizar los contajes, es importante eliminar otros los sesgos de composición entre librerías. Esto puede hacerse aplicando la normalización por el método TMM que genera un conjunto de factores de normalización, donde el producto de estos factores y los tamaños de librería definen el tamaño efectivo de la biblioteca. 
+
+La función `calcNormFactors`, de la librería `edgeR`, calcula los factores de normalización entre librerías.
+
+```{r calcNormFactors}
+library(edgeR)
+dgeObj_norm <- calcNormFactors(dgeObj)
+```
+
+Esto no modificará la matriz de contajes, pero actualizará los factores de normalización en el objeto DGEList  (sus valores predeterminados son 1).
+
+Es decir, _aunque no se observen cambios en la matriz de contajes_, cuando se utilizan estos factores de normalización en algún cálculo la importancia de las distintas columnas se tendrá en cuenta.
+
+**Resumiendo**
+
+Los análisis que se realicen a continuación se basaran en la matriz de contajes, filtrada, estandarizada y normalizada, sobre la que además se toman logaritmo base dos.
+
+```{r log2count_norm}
+log2count_norm <- cpm(dgeObj_norm, log=TRUE)
+```
+
+**Esta será nuestra matriz de partida para los análisis siguientes,**
+
+# Exploración de los datos
+
+Una vez descartados los genes poco expresados y con los recuentos almacenados en un objeto `DGEList`,  podemos`proceder a realizar algunos gráficos exploratorios para determinar si los datos aparentan buena calidad y/o si presentan algun problema.
+
+## Distribución de los contajes
+
+Un diagrama de cajas con los datos, normalizados o no, muestra que la distribución de los contajes es muy asimétrica, lo que justifica la decisión de trabajar con los logaritmos de los datos.
+
+La transformación logarítmica puede hacerse directamente pero es mejor usar la función `cpm`, como se ha hecho, que agrega una pequeña cantidad para evitar tomar logaritmos de cero.
+
+```{r distriCounts1}
+par(mfrow=c(2,1))
+rawCounts <- dgeObj_norm$counts
+boxplot(rawCounts, ylab="CPM",las=2, xlab="", col = dgeObj$samples$cols, cex.axis=0.6, main="Distribución de contajes")
+boxplot(log2count_norm, ylab="Log2-CPM",las=2, xlab="", col=dgeObj$samples$cols, cex.axis=0.6, main="Distribución de log(contajes)")
+abline(h=median(log2count_norm), col="blue")
+par(mfrow=c(1,1))
+```
+
+## Análisis de similaridad entre las muestras
+
+### Distancia entre muestras
+
+La función `dist` permite calcular una _matriz de distancias_ que contiene las comparaciones dos a dos entre todas las muestras. Por defecto se utiliza una distancia euclídea.
+
+```{r}
+sampleDists <- dist(t(log2count_norm))
+round(sampleDists,1)
+```
+
+Las matrices de distancias se pueden visualizar directamente con un heatmap.
+
+```{r}
+library(factoextra)
+fviz_dist(sampleDists)
+```
+
+Como puede verse _las muestras tienden a agruparse por el factor SANO/COVID, aunque una de las muestras. COV155 se separa del resto de las del grupo COVID.
+
+### Agrupamiento jerárquico
+
+Un agrupamiento jerárquico proporciona una representación alternativa, también basada en la matriz de distancias.
+
+```{r}
+hc <-hclust(sampleDists)
+plot(hc,labels = colnames(log2count_norm),main = "Agrpamiento jerárquico de las muestras", cex=0.8)
+```
+
+Una de las muestras COVID parece más similar a las saludables que a las otras COVID.
+
+### Visualización en dimensión reducida
+
+
+```{r}
+col.status <- dgeObj_norm$samples$cols
+plotMDS(log2count_norm,col=col.status, main="Status", cex=0.7)
+```
+
+Como puede verse, el gráfico muestra la misma agrupación "natural" y el mismo comportamiento atípico de una muestra.
+
+# Análisis de expresión diferencial
+
+El objetivo del análisis de expresión diferencial es seleccionar genes cuya expresión difiere entre grupos. 
+
+## Selección de genes usando limma-Voom
+
+La ventaja principal de esta aproximación es que permite trabajar con toda la flexibilidad de los modelos lineales para representar diseños experimentales, y, en muchos casos , aprovechar la experiencia previa del usuario en el manejo de limma.
+
+### Matriz de diseño y de contrastes
+
+Utilizando la variable `group` podemos definir una _matriz de diseño_ y, sobre ésta, los _contrastes_ que nos interesan.
+
+```{r matrizDisenyo}
+group = as.factor(dgeObj_norm$samples$group)
+design = model.matrix(~ 0 + group)
+colnames(design) = gsub("group", "", colnames(design))
+row.names(design) = sampleNames
+design
+```
+
+Dado que estamos interesados en las diferencias entre los grupos, necesitamos especificar qué comparaciones queremos llevar a cabo. Las comparaciones de interés se puede especificar utilizando la función `makeContrasts`. La matriz de contraste indica  qué columnas de la matriz `design` vamos a comparar. En este caso tan sólo se llevará a cabo una comparación.
+
+```{r matrizContrastes}
+cont.matrix = makeContrasts(CONTROLvsCOVID = COVID - SANO,
+levels=colnames(design))
+cont.matrix
+```
+
+### Transformación de los contajes
+
+```{r voom}
+voomObj <- voom(dgeObj_norm, design)
+voomObj
+```
+
+### Selección de genes diferencialmente expresados
+
+Como en el caso de los microarrays el objeto `voomObj` y las matrices de diseño y contrastes se utilizaran para ajustar un modelo y, a continuación realizar las comparaciones especificadas sobre el modelo ajustado. El proceso finaliza con la regularización del estimador del error usando la función ` eBayes`.
+
+```{r ajusteLM}
+fit <- lmFit(voomObj)
+fit.cont <- contrasts.fit(fit, cont.matrix)
+fit.cont <- eBayes(fit.cont)
+```
+
+### Top tables
+
+Los resultados de un análisis de expresión diferencial se pueden extraer con la  función `topTable`. Esta función genera una tabla de resultados cuyas columnas contienen información acerca de los genes y la diferencia entre los grupos comparados. Concretamente:
+
+```{r topTable}
+toptab <- topTable(fit.cont,coef=1,sort.by="p", number=nrow(fit.cont))
+head(toptab)
+```
+### Visualización de los resultados
+
+Para visualizar los resultados podemos usar un `volcanoPlot`:
+
+```{r volcano}
+volcanoplot(fit.cont,coef=1,highlight=100, main="COVID vs SANO")
+```
+
+```{r}
+# Load required packages -------------------------------------------------------  
+if (!require("pacman")) install.packages("pacman")
+pacman::p_load(here,  
+               tidyverse, 
+               janitor, # Cleaning column names  
+               scales, # Transform axis scales   
+               ggrepel) # Optimise plot label separation 
+
+```
+
+
+```{r FRC1}
+library("gridExtra")
+library("plotly")
+```
+
+
+```{r FRC2}
+diseased_vs_healthy<-data.frame(fit.cont$genes, fit.cont$coefficients,fit.cont$p.value)
+colnames(diseased_vs_healthy)<-c("geneid","foldchange","adjpval")
+```
+
+
+```{r FRC3}
+vol_plot <- diseased_vs_healthy %>%
+  ggplot(aes(x = foldchange,
+             y = -log10(adjpval))) + 
+  geom_point() 
+
+vol_plot + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(log2(0.5), log2(2)),
+             linetype = "dashed") + xlim(-6.5, 6.5) 
+
+```
+
+```{r FRC4}
+diseased_vs_healthy <- diseased_vs_healthy %>%
+  mutate(gene_type = case_when(foldchange >= 1.5 & adjpval <= 0.05 ~ "up",
+                               foldchange <= -1.5 & adjpval <= 0.05 ~ "down",
+                               TRUE ~ "ns"))   
+
+# Obtain gene_type counts ------------------------------------------------------           
+diseased_vs_healthy %>%
+  count(gene_type)
+```
+
+
+```{r FRC5}
+diseased_vs_healthy %>%
+  distinct(gene_type) %>%
+  pull()  
+#> [1] "down" "up"   "ns"    
+# Add colour, size and alpha (transparency) to volcano plot --------------------
+cols <- c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey") 
+sizes <- c("up" = 3, "down" = 3, "ns" = 1) 
+alphas <- c("up" = 1, "down" = 1, "ns" = 0.5)
+
+diseased_vs_healthy %>%
+  ggplot(aes(x = foldchange,
+             y = -log10(adjpval),
+             fill = gene_type,    
+             size = gene_type,
+             alpha = gene_type)) + 
+  geom_point(shape = 21, # Specify shape and colour as fixed local parameters    
+             colour = "black") + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(-2, 2),
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-6.5, 6.5, 1)),       
+                     limits = c(-7, 7))  
+```
+
+
+
+```{r FRC6}
+# add a grouping column; default value is "not significant"
+
+diff_df<-diseased_vs_healthy
+colnames(diff_df)<-c("geneid","foldchange","adjpval","genetype")
+diff_df["group"] <- "NotSignificant"
+
+# for our plot, we want to highlight 
+# FDR < 0.05 (significance level)
+# Fold Change > 1.5
+
+# change the grouping for the entries with significance but not a large enough Fold change
+diff_df[which(diff_df['adjpval'] < 0.05 & abs(diff_df['foldchange']) < 1.5 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough Fold change but not a low enough p value
+diff_df[which(diff_df['adjpval'] > 0.05 & abs(diff_df['foldchange']) > 1.5 ),"group"] <- "FoldChange"
+
+# change the grouping for the entries with both significance and large enough fold change
+diff_df[which(diff_df['adjpval'] < 0.05 & abs(diff_df['foldchange']) > 1.5 ),"group"] <- "Significant&FoldChange"
+
+
+# Find and label the top peaks..
+top_peaks <- diff_df[with(diff_df, order(foldchange, adjpval)),][1:5,]
+top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(-foldchange, adjpval)),][1:5,])
+
+# Add gene labels for all of the top genes we found
+# here we are creating an empty list, and filling it with entries for each row in the dataframe
+# each list entry is another list with named items that will be used by Plot.ly
+a <- list()
+for (i in seq_len(nrow(top_peaks))) {
+  m <- top_peaks[i, ]
+  a[[i]] <- list(
+    x = m[["foldchange"]],
+    y = -log10(m[["adjpval"]]),
+    text = m[["geneid"]],
+    xref = "x",
+    yref = "y",
+    showarrow = TRUE,
+    arrowhead = 0.5,
+    ax = 20,
+    ay = -40
+  )
+}
+
+
+# make the Plot.ly plot
+p <- plot_ly(data = diff_df, x=~foldchange, y=~-log10(adjpval), text = ~geneid, mode = "markers", color = ~group) %>% 
+  layout(title ="") %>% layout(annotations = a)
+
+
+p
+
+```
+
+
+
+
+
+Con el fin de observar si existen perfiles de expresión diferenciados podemo realizar un mapa de colores con los genes más diferencialmente expresados.
+
+Es decir, fijamos un criterio de selección de genes y retenemos aquellos componentes de la tabla de resultados que lo cumplen. Por ejemplo: Genes con un p-balor ajustado inferior a 0.001 y un `fold-change' superior a 2.
+
+```{r deg1VOOM}
+topGenesBas <- rownames(subset(toptab, (abs(logFC)> 2) & (adj.P.Val < 0.01)))
+length(topGenesBas)
+```
+
+Con la matriz de expresión de los genes que verifican dicha condición se puede construir un heatmap.
+
+```{r mapaDeColores}
+library(pheatmap)
+mat  <- log2count_norm[topGenesBas, ]
+mat  <- mat - rowMeans(mat)
+pheatmap(mat)
+```
+
+Los dos grupos estan diferenciados, sobre todo en un subconjunto de genes en donde las expresiones toman signos (colores) distintos. En otro de los grupos parece que, en el grupo de individuos sanos los genes diferencialmente expresados se encuentran sobre-expresados en el grupo COVID, y apenas expresados en el grupo sanos.
+
+
+## Análisis de expresión diferencial usando el paquete `edgeR`
+
+El análisis con `edgeR` es similar al anterior (se originan en el mismo equipo de investigación) pero la modelización es distinta.
+
+El análisis utiliza un GLM pero, en una forma que recuerda a lo que se hace con `limma`, realiza un paso adicional,en el que se calcula una estimación mejorada de la dispersión (variabilidad) de las muestras que integra las estimaciones individuales y la global mediante estimación Bayes empírica.
+
+
+```{r}
+y = estimateDisp(dgeObj_norm, design, robust=TRUE)
+plotBCV(y)
+```
+
+Con este objeto, que añade a los contajes normalizados los estimadores mejorados de dispersión, se ajusta un modelo lineal generalizado con distribución binomial para los errores.
+
+```{r}
+fit <- glmQLFit(y, design, robust = TRUE)
+```
+
+Una vez ajustado el modelo se procede a construir el contraste y realizar el test.
+
+De hecho podemos usar la matriz de contrastes que construímos para limma voom, en la misma forma que hemos reutilizado la de diseño.
+
+```{r}
+res <- glmQLFTest(fit, contrast = cont.matrix)
+head(res)
+```
+
+Los resultados se almacenan en un objeto similar a la ' topTable' de `limma`.
+
+```{r}
+topTags_edge <- topTags(res, n=dim(log2count_norm)[1]) # todos los genes
+head(topTags_edge)
+```
+ Podemos seleccionar los genes más diferencialmente expresados de la misma forma que hicimos con limma-voom
+ 
+```{r}
+topGenes_edge <- rownames(subset(topTags_edge$table, (abs(logFC)> 2) & (FDR < 0.01)))
+length(topGenes_edge)
+```
+ 
+Obsérvese que la lista de genes seleccionados es muy similar en ambos casos.
+
+```{r comparaVoomEdgeR}
+library(ggvenn)
+x = list(LimmaVoom = topGenesBas, edgeR = topGenes_edge)
+ggvenn(x, fill_color = c("#0073C2FF", "#EFC000FF"), stroke_size = 0.5, set_name_size = 3)
+```
+
+# Anotación de resultados y análisis de significación biológica
+
+Para el análisis de significación se utilizan dos listas de transcritos:
+
+- La lista de transcritos diferencialmenete expresados
+- La lista de todos los tránscritos o "Universo"
+
+
+```{r}
+topGenes <- union(topGenesBas, topGenes_edge)
+length(topGenes)
+universe <- rownames(toptab)
+length(universe)
+```
+
+## Anotación de los identificadores
+
+Esto es posible, y de hecho sencillo de llevar a cabo, usando el paquete `annotate`.
+
+```{r anotaTop}
+library(org.Hs.eg.db)
+AnnotationDbi::keytypes(org.Hs.eg.db)
+topAnots = AnnotationDbi::select(org.Hs.eg.db, topGenes, c("SYMBOL", "ENTREZID", "GENENAME"),
+keytype = "ENSEMBL")
+head(topAnots)
+dim(topAnots)
+```
+
+Como puede verse, el número de anotaciones es el mismo que el de identificadores ENSEMBL, lo que podría llevar a pensar que, es posible que, antes de subir los datos a GEO se hayan agrupado los contajes por genes.
+
+Para la anotación del universo se procederá igual.
+
+```{r anots}
+univAnots = AnnotationDbi::select(org.Hs.eg.db, universe, c("SYMBOL", "ENTREZID", "GENENAME"), keytype = "ENSEMBL")
+head(univAnots)
+dim(univAnots)
+```
+
+En este caso se observa como hay más anotaciones que transcritos, lo que sugiere que múltiples transcritos han sido mapeados en el mismo gen.
+
+## Análisis de enriquecimiento
+
+El paquete `clusterProfiler` admite identificadores de tipo ENSEMBL y permite gran variedad de análisis complementarios al enriquecimiento por lo que, es una de las mejores opciones para el análisis de significación biológica.
+
+```{r enrichment}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+ego = enrichGO(gene = topGenes, 
+               universe=universe,
+               keyType = "ENSEMBL", 
+               OrgDb = org.Hs.eg.db,
+               ont="BP",
+               pAdjustMethod = "BH",
+               pvalueCutoff = 0.05,
+               qvalueCutoff = 0.05,
+               readable = TRUE)
+head(ego[,-8], n=5)
+```
+
+Con los resultados del análisis de enriquecimiento se pueden llevar a cabo distintas visualizaciones cuya interpretación exacta puede verse en el manual de clusterProfiler
+
+```{r viewEnrichment1}
+dotplot(ego, showCategory=7)
+```
+
+```{r viewEnrichment2}
+library(ggplot2)
+ego2 = simplify(ego)
+cnetplot(ego2, showCategory = 3, cex_category =0.3, cex_label_category =0.7, 
+         cex_gene=0.2, cex_label_gene=0.4, circular=TRUE, colorEdge=TRUE)
+```
+
+```{r viewEnrichment3}
+library(enrichplot)
+goplot(ego2, showCategory=6, cex=0.1)
+```
+
+```{r viewEnrichment5}
+heatplot(ego2)
+```
+
+
+```{r viewEnrichment6}
+term_similarity_matrix = pairwise_termsim(ego)
+emapplot(term_similarity_matrix, showCategory = 15, group_category=TRUE, group_legend=TRUE)
+```
