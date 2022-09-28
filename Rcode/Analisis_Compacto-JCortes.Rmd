@@ -98,7 +98,7 @@ Los datos se han depositado en el repositorio "[Gene Expression Omnibus (GEO)](h
 Los datos de contajes se han descargado desde l repositorio "[GEO]((https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE152418))" al archivo `Rawcounts.csv` que se utilizará como punto de partida para el análisis.
 
 ```{r}
-counts <- read.csv("datos/RawCounts.csv", row.names = 1)
+counts <- read.csv("../datos/RawCounts.csv", row.names = 1)
 selectedCounts <- as.matrix(counts)
 ```
 
@@ -245,12 +245,37 @@ gg1 <- ggplot(d,aes(x,y,fill=co)) + geom_boxplot() +
   theme(axis.text.x = element_text(angle=90,face='bold',vjust = 0.5),
         axis.title = element_text(face='bold'),
         legend.title = element_blank(),
-        legend.position = 'bottom')
+        legend.position = 'bottom',
+        plot.background = element_rect(fill = "transparent", color = NA),
+        panel.background = element_rect(fill = "transparent"),
+        legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"))
 gg1
-#ggsave(filename = 'figures/boxplot.png',gg1)
+
+```
+
+```{r echo=FALSE}
+ggsave(filename = 'figures/boxplot.png',gg1,dpi = 300,bg = "transparent")
 ```
 
 **Esta será nuestra matriz de partida para los análisis siguientes,**
+
+```{r warning=FALSE}
+library(plotly)
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+cols = gg_color_hue(2)
+plot_ly(d, x = ~x, y = ~y, type = "box", color=~co,
+        colors = gg_color_hue(2)) %>%
+  layout(xaxis = list(title = ''),
+         yaxis = list(title = 'Normalized counts (log2)',
+                      hoverformat = '.2f'),
+         legend = list(x = 0.5, y = 17, orientation = 'h',xanchor = "center"))
+
+```
+
 
 # Exploración de los datos
 
@@ -284,7 +309,7 @@ round(sampleDists,1)
 
 Las matrices de distancias se pueden visualizar directamente con un heatmap.
 
-```{r}
+```{r message=FALSE}
 library(factoextra)
 fviz_dist(sampleDists)
 ```
@@ -302,22 +327,94 @@ plot(hc,labels = colnames(log2count_norm),main = "Agrupamiento jerárquico de la
 
 ```{r}
 hc <- hclust(sampleDists,method = 'ward.D2')
-gg_color_hue <- function(n) {
-  hues = seq(15, 375, length = n + 1)
-  hcl(h = hues, l = 65, c = 100)[1:n]
-}
-cols = gg_color_hue(2)
-gg2 <- fviz_dend(hc, k = 2,rect=FALSE,lwd=2,k_colors = c("grey","grey"),
-                 label_cols =  ifelse(substr(colnames(log2count_norm)[hc$order],1,1)=='C',
-                                      cols[1],cols[2]))
-gg2 <- gg2 +
-        theme(axis.title = element_text(face='bold'),
-              title = element_blank())
+library("ggdendro", "dendextend")
+dend <- as.dendrogram(hc)
+dend_data <- dendro_data(dend, type = "rectangle")
+dend_data$labels$color <- ifelse(grepl('COV',dend_data$labels$label),'COVID','HEALTHY')
+head(dend_data$segments)
+gg2 <- ggplot(dend_data$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend),size=1.2)+
+  geom_text(data = dend_data$labels, aes(x, y-1, label = label,color=color,fontface='bold'),
+            hjust = 1, angle = 90, size = 8)+
+  ylim(-20, 150) + ylab('Dissimilarity') + xlab('') +
+  theme(axis.ticks.length.x = unit(0,units = "cm"),
+        axis.text.x = element_blank(),
+        axis.text.y = element_text(size=30),
+        axis.title.y = element_text(size=30),
+        legend.position = "none",
+        text=element_text(face='bold'),
+        panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    # panel.grid.major = element_blank(), # get rid of major grid
+    # panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"))
+# gg_color_hue <- function(n) {
+#   hues = seq(15, 375, length = n + 1)
+#   hcl(h = hues, l = 65, c = 100)[1:n]
+# }
+# cols = gg_color_hue(2)
+# gg2 <- fviz_dend(hc, k = 1,rect=FALSE,lwd=2,k_colors = c("grey"),labels_track_height=30, cex=0.7,
+#                  label_cols =  ifelse(substr(colnames(log2count_norm)[hc$order],1,1)=='C',
+#                                       cols[1],cols[2]),
+#                  ggtheme = theme_classic())
+# gg2 <- gg2 +
+#         theme(axis.title = element_text(face='bold'),
+#               title = element_blank(),
+#               axis.text = element_text(face='bold'))
+
 gg2
-# ggsave('figures/dendograma.png',gg2) 
+```
+
+```{r echo=FALSE}
+ggsave('figures/dendograma.png',gg2, width = 4, height = 3, dpi = 300, bg = "transparent") 
+```
+
+```{r}
+library(ggdendro)
+dhc <- as.dendrogram(hc)
+data <- dendro_data(dhc, type = "rectangle")
+
+# gg2 <- fviz_dend(dhc, k = 2,rect=FALSE,lwd=2,k_colors = c("grey","grey"),
+#                  label_cols =  ifelse(substr(colnames(log2count_norm)[hc$order],1,1)=='C',
+#                                       cols[1],cols[2])) 
+# gg2 <- gg2 +
+#         theme(axis.title = element_text(face='bold'),
+#               axis.text = element_text(angle = 90),
+#               title = element_blank())
+
+clust    <- cutree(hc,k=2)                    # find 2 clusters
+clust.df <- data.frame(label=names(clust), cluster=factor(clust))
+data[["labels"]] <- merge(data[["labels"]],clust.df, by="label")
+
+gg2 <- ggplot(mapping = aes(text=paste0('y=',formatC(y,digits=1,format='f')))) + 
+  geom_segment(data=segment(data), aes(x=x, y=y, xend=xend, yend=yend),size=1,color='grey') + 
+  geom_text(data=label(data), 
+            aes(x, y-10, label=label, hjust=0), 
+            size=3,
+            color=ifelse(substr(label(data)$label,1,1)=='C',cols[1],cols[2])) +
+  coord_flip() + scale_y_reverse(expand=c(0.2, 0)) + 
+  xlab('') + ylab('Height') +
+  theme(axis.line.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        # axis.text.x=element_text(), 
+        #axis.text=element_text(angle=90),
+        legend.position = "none",
+        panel.background=element_rect(fill="white"))#,
+        #panel.grid=element_blank())
+
+ggplotly(gg2,tooltip=c('text')) %>% 
+  layout(showlegend = FALSE,
+         xaxis = list(hoverformat = '.2f'))
+
+# , xaxis=list(ticks="outside")
 ```
 
 Una de las muestras COVID parece más similar a las saludables que a las otras COVID.
+
+
 
 ### Visualización en dimensión reducida
 
@@ -331,13 +428,12 @@ limma::plotMDS(log2count_norm,col=col.status, main="Status", cex=0.7)
 library(magrittr)
 
 mds <- plotMDS.DGEList(dgeObj_norm,plot = FALSE)
-
-gg3 <- data.frame(x=mds$x,y=mds$y,
+ddd <- data.frame(x=mds$x,y=mds$y,
            co=ifelse(substr(colnames(log2count_norm),1,3)=='COV','COVID','HEALTHY'),
            ind=substr(colnames(log2count_norm),4,6)) %>%
   set_colnames(c("Dim1", "Dim2","co","ind")) %>%
-  rownames_to_column("SampleID") %>%
-ggplot(aes(x = Dim1, y = Dim2,col=co,label=ind)) +
+  rownames_to_column("SampleID")
+gg3 <- ggplot(ddd,aes(x = Dim1, y = Dim2,col=co,label=ind)) +
   geom_point(size = 3) +
   geom_text(hjust=-0.3, vjust=0,check_overlap = TRUE, show.legend = FALSE) +
   scale_colour_manual(values = gg_color_hue(2)) +
@@ -348,9 +444,78 @@ ggplot(aes(x = Dim1, y = Dim2,col=co,label=ind)) +
   theme(legend.title=element_blank(),
         legend.position = "bottom",
         axis.title = element_text(face='bold'))
-gg3  
-# ggplot2::ggsave('figures/MDS.png',gg3) 
+gg3
 ```
+
+```{r echo=FALSE}
+ggplot2::ggsave('figures/MDS.png',gg3) 
+```
+
+```{r fig.height=10, warning=FALSE, message=FALSE}
+# https://github.com/GuangchuangYu/emojifont
+# https://mran.microsoft.com/snapshot/2016-07-03/web/packages/emojifont/vignettes/emojifont.html
+# https://cran.r-project.org/web/packages/emojifont/vignettes/emojifont.html
+library(emojifont)
+library(ggpubr)
+
+##-- emoji icons -------------------------------------------
+
+ddd <- ddd %>%
+  mutate(label=if_else(co=='COVID',
+                       emoji('sneezing_face'),
+                       emoji('smile')))
+
+gg4_1 <- ggplot(ddd,aes(x = Dim1, y = Dim2,col=label,label=label)) +
+    geom_text(family="EmojiOne", size=6) +
+    scale_colour_manual(values = rev(gg_color_hue(2))) +
+    xlab(paste0("Dimension 1 (",
+             formatC(100*mds$var.explained[1],di=1,fo='f'),'%)')) + 
+    ylab(paste0("Dimension 2 (",
+             formatC(100*mds$var.explained[2],di=1,fo='f'),'%)')) +
+  theme(legend.title=element_blank(),
+        legend.position = "bottom",
+        axis.title = element_text(face='bold'),
+        legend.text=element_text(family='EmojiOne'))
+
+##-- awesome fav icons -------------------------------------------
+# https://stackoverflow.com/questions/56605100/unable-to-load-fontawesome-icons-in-shiny-app
+# https://fontawesome.com/v4/icons/
+
+ddd <- ddd %>%
+  mutate(label=if_else(co=='COVID',
+                       fontawesome('fa-ambulance'),
+                       fontawesome('fa-heart-o')))
+gg4_2 <- ggplot(ddd,aes(x = Dim1, y = Dim2, col=label,label=label)) +
+    geom_text(family="fontawesome-webfont", size=20) +
+    scale_colour_manual(values = rev(gg_color_hue(2))) +
+  xlab(paste0("Dimension 1 (",
+             formatC(100*mds$var.explained[1],di=1,fo='f'),'%)')) + 
+    ylab(paste0("Dimension 2 (",
+             formatC(100*mds$var.explained[2],di=1,fo='f'),'%)')) +
+  theme(legend.title=element_blank(),
+        legend.position = "bottom",
+        axis.title = element_text(face='bold',size=30),
+        legend.text=element_text(family='fontawesome-webfont'),
+    panel.background = element_rect(fill = "transparent"), # bg of the panel
+    plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+    # panel.grid.major = element_blank(), # get rid of major grid
+    # panel.grid.minor = element_blank(), # get rid of minor grid
+    legend.key.size = unit(x = 0.01,units = "cm"),
+    legend.background = element_rect(fill = "transparent"), # get rid of legend bg
+    legend.box.background = element_rect(fill = "transparent"),
+    axis.text = element_text(size=25)
+  ) + guides(color="none")
+
+
+
+ggarrange(gg4_2, nrow=1)  # gg4_1
+```
+
+```{r echo=FALSE}
+# ggplot2::ggsave('figures/MDS_emotis_1.png',gg4_1,dpi=300)
+ggplot2::ggsave('figures/MDS_emotis_2.png',gg4_2,dpi=300, bg = "transparent")
+```
+
 
 Como puede verse, el gráfico muestra la misma agrupación "natural" y el mismo comportamiento atípico de una muestra.
 
