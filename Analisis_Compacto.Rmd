@@ -412,7 +412,11 @@ Con la matriz de expresión de los genes que verifican dicha condición se puede
 library(pheatmap)
 mat  <- log2count_norm[topGenesBas, ]
 mat  <- mat - rowMeans(mat)
-pheatmap(mat)
+pheatmap(mat, fontsize_col = 14, fontsize_row = 1)
+png("pheatmap_transp.png", units="in", width=30, height=22, res=600, bg="transparent")
+par(bg=NA)
+pheatmap(mat, fontsize = 30, fontsize_col = 30, fontsize_row = 1, treeheight_row = 60, treeheight_col = 180)
+dev.off()
 ```
 
 También es posible crear un Heatmap interactivo:
@@ -538,13 +542,32 @@ Con los resultados del análisis de enriquecimiento se pueden llevar a cabo dist
 
 ```{r viewEnrichment1}
 dotplot(ego, showCategory=7)
+## sense transparencia
+png("dotplot.png", units="in", width=14, height=9, res=600)
+dotplot(ego, showCategory=15, font.size = 12)
+dev.off()
+## amb transparencia
+ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
+p <- dotplot(ego2, showCategory=15, font.size = 20) + 
+  scale_colour_gradient2(low = "red", mid = "orange", high = "orange", midpoint = 0.0010) +
+  theme(panel.background  = element_rect(fill = "transparent"),             # bg of the panel
+        plot.background   = element_rect(fill = "transparent", color = NA), # bg of the plot
+        legend.background = element_rect(fill = "transparent"),             # get rid of legend bg
+        legend.box.background = element_rect(fill = "transparent"))         # bg legend boxes
+ggsave("dotplot_transp.png", width=14, height=9, dpi=300, bg = "transparent")
 ```
 
 ```{r viewEnrichment2}
+library(clusterProfiler)
 library(ggplot2)
-ego2 = simplify(ego)
-cnetplot(ego2, showCategory = 3, cex_category =0.3, cex_label_category =0.7, 
-         cex_gene=0.2, cex_label_gene=0.4, circular=TRUE, colorEdge=TRUE)
+ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
+#cnetplot(ego2, showCategory = 3, cex_category =0.3, cex_label_category =0.7, 
+#         cex_gene=0.2, cex_label_gene=0.4, circular=TRUE, colorEdge=TRUE)
+png("cnetplot_transp.png", units="in", width=24, height=16, res=600, bg="transparent")
+par(bg=NA)
+cnetplot(ego2, showCategory=5, cex_category=1, cex_label_category=2.5, 
+         cex_gene=1, cex_label_gene=1, circular=FALSE, colorEdge=TRUE)
+dev.off()
 ```
 
 ```{r viewEnrichment3}
