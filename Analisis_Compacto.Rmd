@@ -431,7 +431,7 @@ library(pheatmap)
 mat  <- log2count_norm[topGenesBas, ]
 mat  <- mat - rowMeans(mat)
 pheatmap(mat, fontsize_col = 14, fontsize_row = 1)
-png("pheatmap_transp.png", units="in", width=30, height=22, res=600, bg="transparent")
+png("figures/pheatmap_transp.png", units="in", width=30, height=22, res=600, bg="transparent")
 par(bg=NA)
 pheatmap(mat, fontsize = 30, fontsize_col = 30, fontsize_row = 1, treeheight_row = 60, treeheight_col = 180)
 dev.off()
@@ -541,7 +541,7 @@ En este caso se observa como hay más anotaciones que transcritos, lo que sugier
 
 El paquete `clusterProfiler` admite identificadores de tipo ENSEMBL y permite gran variedad de análisis complementarios al enriquecimiento por lo que, es una de las mejores opciones para el análisis de significación biológica.
 
-```{r enrichment}
+```{r enrichment, out.width="100%"}
 library(clusterProfiler)
 library(org.Hs.eg.db)
 ego = enrichGO(gene = topGenes, 
@@ -558,12 +558,18 @@ head(ego[,-8], n=5)
 
 Con los resultados del análisis de enriquecimiento se pueden llevar a cabo distintas visualizaciones cuya interpretación exacta puede verse en el manual de clusterProfiler
 
-```{r viewEnrichment1}
+
+```{r viewEnrichment1, out.width="100%"}
 dotplot(ego, showCategory=7)
+```
+
+Un dotplot un poco más trabajado
+
+```{r viewEnrichment2, out.width="100%"}
 ## sense transparencia
-png("dotplot.png", units="in", width=14, height=9, res=600)
+png("figures/dotplot.png", units="in", width=14, height=9, res=600)
 dotplot(ego, showCategory=15, font.size = 12)
-dev.off()
+invisible(dev.off())
 ## amb transparencia
 ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
 p <- dotplot(ego2, showCategory=15, font.size = 20) + 
@@ -572,23 +578,24 @@ p <- dotplot(ego2, showCategory=15, font.size = 20) +
         plot.background   = element_rect(fill = "transparent", color = NA), # bg of the plot
         legend.background = element_rect(fill = "transparent"),             # get rid of legend bg
         legend.box.background = element_rect(fill = "transparent"))         # bg legend boxes
-ggsave("dotplot_transp.png", width=14, height=9, dpi=300, bg = "transparent")
-```
-
-```{r viewEnrichment2}
-library(clusterProfiler)
-library(ggplot2)
-ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
-#cnetplot(ego2, showCategory = 3, cex_category =0.3, cex_label_category =0.7, 
-#         cex_gene=0.2, cex_label_gene=0.4, circular=TRUE, colorEdge=TRUE)
-png("cnetplot_transp.png", units="in", width=24, height=16, res=600, bg="transparent")
-par(bg=NA)
-cnetplot(ego2, showCategory=5, cex_category=1, cex_label_category=2.5, 
-         cex_gene=1, cex_label_gene=1, circular=FALSE, colorEdge=TRUE)
-dev.off()
+ggsave("figures/dotplot_transp.png", width=14, height=9, dpi=300, bg = "transparent")
+p
 ```
 
 ```{r viewEnrichment3}
+library(clusterProfiler)
+library(ggplot2)
+ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
+png("figures/cnetplot_transp.png", units="in", width=24, height=16, res=600, bg="transparent")
+par(bg=NA)
+a <- cnetplot(ego2, showCategory=5, cex_category=1, cex_label_category=2.5, 
+         cex_gene=1, cex_label_gene=1, circular=FALSE, colorEdge=TRUE)
+a
+invisible(dev.off())
+a
+```
+
+```{r viewEnrichment4}
 library(enrichplot)
 goplot(ego2, showCategory=6, cex=0.1)
 ```
