@@ -270,7 +270,7 @@ gg_color_hue <- function(n) {
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 cols = gg_color_hue(2)
-plot_ly(d, x = ~x, y = ~y, type = "box", color=~co,
+plot_ly(d, x = ~x, y = ~y, type = "box", #color=~cols,
         colors = gg_color_hue(2)) %>%
   layout(xaxis = list(title = ''),
          yaxis = list(title = 'Normalized counts (log2)',
