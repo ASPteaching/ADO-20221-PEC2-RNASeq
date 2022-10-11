@@ -23,6 +23,7 @@ editor_options:
 ```{r class.source = 'fold-hide', setup, include=FALSE}
 library(knitr)
 library(rmdformats)
+source('Rcode/functions.R')
 
 ## Global options
 options(max.print="75")
@@ -238,16 +239,23 @@ Para finalizar el preprocesado se toman logaritmo base dos de los contajes.
 log2count_norm <- cpm(dgeObj_norm, log=TRUE)
 ```
 
-```{r eval=FALSE}
+```{r eval=FALSE, echo=FALSE}
 boxplot(log2count_norm, col=dgeObj_norm$samples$cols,
         las=2, cex.axis=0.7, 
         main="Contajes normalizados (log2))")
 ```
 
-```{r niceBoxPlot, warning=FALSE}
+```{r niceBoxPlot, warning=FALSE, out.width="100%"}
 source("./Rcode/niceBoxPlot.R")
 gg1 <- niceBoxPlot(log2count_norm)
 ggsave(filename = 'figures/boxplot.png',gg1,dpi = 300,bg = "transparent")
+gg1
+```
+
+También se puede hacer usando plotly.
+
+```{r niceBoxPlotly, warning=FALSE, out.width="100%"}
+niceBoxPlotly(log2count_norm)
 ```
 
 **Esta será nuestra matriz de partida para los análisis siguientes**
@@ -262,13 +270,12 @@ Un diagrama de cajas con los datos, normalizados o no, muestra que la distribuci
 
 La transformación logarítmica puede hacerse directamente pero es mejor usar la función `cpm`, como se ha hecho, que agrega una pequeña cantidad para evitar tomar logaritmos de cero.
 
-```{r distriCounts1}
+```{r distriCounts1, fig.height=6, out.width="100%"}
 par(mfrow=c(2,1))
 rawCounts <- dgeObj_norm$counts
 boxplot(rawCounts, ylab="CPM",las=2, xlab="", col = dgeObj$samples$cols, cex.axis=0.6, main="Distribución de contajes")
 boxplot(log2count_norm, ylab="Log2-CPM",las=2, xlab="", col=dgeObj$samples$cols, cex.axis=0.6, main="Distribución de log(contajes)")
 abline(h=median(log2count_norm), col="blue")
-par(mfrow=c(1,1))
 ```
 
 ## Análisis de similaridad entre las muestras
@@ -284,7 +291,8 @@ round(sampleDists,1)
 
 Las matrices de distancias se pueden visualizar directamente con un heatmap.
 
-```{r}
+```{r heatmap1, out.width="100%"}
+# par(mfrow=c(1,1))
 library(factoextra)
 fviz_dist(sampleDists)
 ```
@@ -295,17 +303,21 @@ Como puede verse _las muestras tienden a agruparse por el factor SANO/COVID, aun
 
 Un agrupamiento jerárquico proporciona una representación alternativa, también basada en la matriz de distancias.
 
-```{r}
+```{r uglydedndogram, out.width="100%"}
 hc <-hclust(sampleDists)
 plot(hc,labels = colnames(log2count_norm),main = "Agrpamiento jerárquico de las muestras", cex=0.8)
 ```
 
-```{r  niceDendrogram}
+
+El siguiente es un gráfico mejor.
+
+```{r  niceDendrogram, out.width="100%"}
 source("./Rcode/niceDendrogram.R")
 library("ggdendro", "dendextend")
 hc <- hclust(sampleDists,method = 'ward.D2')
 gg2 <- niceDendrogram (hc)
-ggsave('figures/dendograma.png',gg2, width = 4, height = 3, dpi = 300, bg = "transparent") 
+ggsave('figures/dendograma.png',gg2, dpi = 300, bg = "transparent")
+gg2
 ```
 
 Una de las muestras COVID parece más similar a las saludables que a las otras COVID.
@@ -313,15 +325,18 @@ Una de las muestras COVID parece más similar a las saludables que a las otras C
 ### Visualización en dimensión reducida
 
 
-```{r}
+```{r uglyMDS, out.width="100%"}
 col.status <- dgeObj_norm$samples$cols
 plotMDS(log2count_norm,col=col.status, main="Status", cex=0.7)
 ```
 
-```{r niceMDS}
+Con el paquete [emojifont](https://cran.r-project.org/web/packages/emojifont/vignettes/emojifont.html) se pueden usar emoticonos para distinguir los pacientes sanos de los que tienen COVID.
+
+```{r niceMDS, out.width="100%"}
 source("./Rcode/niceMDS.R")
 gg3 <- niceMDS(dgeObj_norm)  
 ggplot2::ggsave('figures/MDS_emotis.png',gg3,dpi=300, bg = "transparent")
+gg3
 ```
 
 Como puede verse, el gráfico muestra la misma agrupación "natural" y el mismo comportamiento atípico de una muestra.
@@ -381,11 +396,11 @@ head(toptab)
 ```
 ### Visualización de los resultados
 
-#### Significación bioogica vs Significación Estadística
+#### Significación biológica vs. Significación Estadística
 
 Para visualizar los resultados podemos usar un `volcanoPlot`:
 
-```{r volcano}
+```{r uglyvolcano, out.width="100%"}
 volcanoplot(fit.cont,coef=1,highlight=100, main="COVID vs SANO")
 ```
 
@@ -588,5 +603,40 @@ term_similarity_matrix = pairwise_termsim(ego)
 emapplot(term_similarity_matrix, showCategory = 15, group_category=TRUE, group_legend=TRUE)
 ```
 
-# Referencias
+# Referencias cortas
+
+- @geoquery
+- @oligo
+- @pdmogene
+- @AQM
+- @ggplot2
+- @ggrepel
+- @pvca
+- @rmaIri
+- @Hackstadt2009
+- @Jeanmougin2010
+- @Smyth2005
+- @Smyth2004
+- @Tusher2001
+- @Chrominski2015
+- @Tan2011
+- @Allison2006
+- @GregoryAlvord2007
+- @Benjamini1995
+- @biobase
+- @genefilter
+- @xtable
+- @Sanchez-Pla2014
+- @mogene21
+- @anotate
+- @orgMm
+- @gplots
+- @Draghici2012
+- @Efron2013
+- @Khatri2005
+- @Khatri2012
+- @Arunachalam2020
+
+
+# Referencias largas
 

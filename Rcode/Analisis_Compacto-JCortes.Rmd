@@ -233,9 +233,6 @@ boxplot(log2count_norm, col=dgeObj_norm$samples$cols,
 library(tidyverse)
 d <- tibble(y=as.numeric(log2count_norm),
             x=rep(colnames(log2count_norm),each=nrow(log2count_norm)),
-            # x=rep(sub(pattern = 'HEA','IND_',
-            #           sub(pattern = 'COV',replacement = 'IND_',colnames(log2count_norm))),
-            #       each=nrow(log2count_norm)),
             co=factor(rep(ifelse(
                     substr(colnames(log2count_norm),1,3)=='COV',
                     'COVID','HEALTHY'),
