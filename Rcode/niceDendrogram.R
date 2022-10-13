@@ -36,8 +36,8 @@ niceDendrogram <- function (hcObj){
     ylim(-20, 150) + ylab('Dissimilarity') + xlab('') +
     theme(axis.ticks.length.x = unit(0,units = "cm"),
           axis.text.x = element_blank(),
-          axis.text.y = element_text(size=30),
-          axis.title.y = element_text(size=30),
+          axis.text.y = element_text(size=10),
+          axis.title.y = element_text(size=10),
           legend.position = "none",
           text=element_text(face='bold'),
           panel.background = element_rect(fill = "transparent"), # bg of the panel

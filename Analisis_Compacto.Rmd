@@ -351,7 +351,7 @@ source("./Rcode/niceDendrogram.R")
 library("ggdendro", "dendextend")
 hc <- hclust(sampleDists,method = 'ward.D2')
 gg2 <- niceDendrogram (hc)
-ggsave('figures/dendograma.png',gg2, dpi = 300, bg = "transparent")
+ggsave('figures/dendograma.png',gg2, bg = "transparent") # , dpi = 300
 gg2
 ```
 
@@ -370,7 +370,7 @@ Con el paquete [emojifont](https://cran.r-project.org/web/packages/emojifont/vig
 ```{r niceMDS, out.width="100%"}
 source("./Rcode/niceMDS.R")
 gg3 <- niceMDS(dgeObj_norm)  
-ggplot2::ggsave('figures/MDS_emotis.png',gg3,dpi=300, bg = "transparent")
+ggplot2::ggsave('figures/MDS_emotis.png',gg3, bg = "transparent") # ,dpi=300
 gg3
 ```
 
