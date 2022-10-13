@@ -185,15 +185,50 @@ dgeObj <- DGEList(counts = counts.keep,
 show(dgeObj)
 ```
 
-<!-- Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting".  -->
+Uno de los aspectos interesantes de estas clases es la posibilidad de extraer partes de todos los objetos a la vez con el operador de "subsetting". 
 
-<!-- ```{r makeDGEObj} -->
-<!-- dim(dgeObj) -->
-<!-- dgeObjShort<-dgeObj[,c(1:5, 11:15)] -->
-<!-- # Library size information is stored in the samples slot -->
-<!-- dgeObjShort$samples -->
-<!-- colnames(dgeObjShort$counts) -->
-<!-- ``` -->
+```{r makeDGEObj}
+dim(dgeObj)
+dgeObjShort<-dgeObj[,c(1:5, 11:15)]
+# Library size information is stored in the samples slot
+dgeObjShort$samples
+colnames(dgeObjShort$counts)
+```
+
+
+```{r FRC0}
+# https://hbctraining.github.io/DGE_workshop_salmon/lessons/AnnotationDbi_lesson.html
+annotations_orgDb <- AnnotationDbi::select(org.Hs.eg.db, # database
+                                           keys = dgeObj$genes[,1],  # data to use for retrieval
+                                           columns = c("SYMBOL", "ENTREZID","GENENAME"), # information to retreive for given data
+                                           keytype = "ENSEMBL")
+
+length(which(is.na(annotations_orgDb$SYMBOL) == FALSE))
+non_duplicates_idx <- which(duplicated(annotations_orgDb$SYMBOL == FALSE))
+annotations_orgDb<- annotations_orgDb[non_duplicates_idx, ]
+```
+
+
+```{r FRC00}
+#https://hbctraining.github.io/Intro-to-R-flipped/lessons/09_reordering-to-match-datasets.html
+cbind(dgeObj$genes[,1],annotations_orgDb$ENSEMBL)[1:100,]
+reorder_idx <- match(dgeObj$genes[,1],annotations_orgDb$ENSEMBL)
+annotations_orgDb_reordered <- annotations_orgDb[reorder_idx,]  
+```
+
+```{r FRC000}
+cbind(dgeObj$genes[,1],annotations_orgDb_reordered$ENSEMBL)[1:100,]
+```
+
+
+```{r FRC0000}
+dgeObj$genes<-annotations_orgDb_reordered
+```
+
+
+```{r FRC00000}
+dgeObj$genes[1:100,]
+```
 
 Aunque podríamos haber creado el objeto a partir de todas las muestras, y haber realizado la extracción de genes y muestras posteriormente, hemos optado por no hacerlo para facilitar el seguimiento del proceso.
 
@@ -412,6 +447,176 @@ niceInteractiveVolcano(fit.cont)
 
 ```
 
+O volcano plots más sofisticados
+
+```{r FRC1}
+library("gridExtra")
+library("plotly")
+```
+
+
+```{r FRC2}
+diseased_vs_healthy <- data.frame(fit.cont$genes[,1], fit.cont$coefficients[,1],fit.cont$p.value[,1])
+colnames(diseased_vs_healthy)<-c("geneid","foldchange","adjpval")
+```
+
+
+```{r FRC3, include=FALSE}
+vol_plot <- diseased_vs_healthy %>%
+  ggplot(aes(x = foldchange,
+             y = -log10(adjpval))) + 
+  geom_point() 
+
+vol_plot + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(log2(0.5), log2(2)),
+             linetype = "dashed") + xlim(-6.5, 6.5) 
+
+
+px<-vol_plot+ theme(rect = element_rect(fill = "transparent"))
+```
+
+```{r FRC4}
+diseased_vs_healthy <- diseased_vs_healthy %>%
+  mutate(gene_type = case_when(foldchange >=2 & adjpval <= 0.05 ~ "up",
+                               foldchange <= -2 & adjpval <= 0.05 ~ "down",
+                               TRUE ~ "ns"))   
+
+# Obtain gene_type counts ------------------------------------------------------           
+diseased_vs_healthy %>%
+  count(gene_type)
+```
+
+
+```{r FRC5, include=FALSE}
+diseased_vs_healthy %>%
+  distinct(gene_type) %>%
+  pull()  
+#> [1] "down" "up"   "ns"    
+# Add colour, size and alpha (transparency) to volcano plot --------------------
+cols <- c("up" = "#ffad73", "down" = "#26b3ff", "ns" = "grey") 
+sizes <- c("up" = 3, "down" = 3, "ns" = 1) 
+alphas <- c("up" = 1, "down" = 1, "ns" = 0.5)
+
+diseased_vs_healthy %>%
+  ggplot(aes(x = foldchange,
+             y = -log10(adjpval),
+             fill = gene_type,    
+             size = gene_type,
+             alpha = gene_type)) + 
+  geom_point(shape = 21, # Specify shape and colour as fixed local parameters    
+             colour = "black") + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(-2, 2),
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-6.5, 6.5, 1)),       
+                     limits = c(-7, 7))  
+```
+
+```{r FRC5x, out.width="100%"}
+p<-  ggplot(diseased_vs_healthy,aes(x = foldchange,
+             y = -log10(adjpval),
+             fill = gene_type,    
+             size = gene_type,
+             alpha = gene_type)) + 
+  geom_point(shape = 21, # Specify shape and colour as fixed local parameters    
+             colour = "black") + 
+  geom_hline(yintercept = -log10(0.05),
+             linetype = "dashed") + 
+  geom_vline(xintercept = c(-2, 2),
+             linetype = "dashed") +
+  scale_fill_manual(values = cols) + # Modify point colour
+  scale_size_manual(values = sizes) + # Modify point size
+  scale_alpha_manual(values = alphas) + # Modify point transparency
+  scale_x_continuous(breaks = c(seq(-6.5, 6.5, 1)),       
+                     limits = c(-7, 7))  
+p1<-p+theme(
+         panel.background = element_rect(fill='transparent'),
+         plot.background = element_rect(fill='transparent', color=NA),
+         panel.grid.major = element_blank(),
+         panel.grid.minor = element_blank(),
+         legend.key = element_rect(colour = NA, fill = NA),
+         legend.background = element_rect(fill='transparent'),
+         legend.box.background = element_rect(fill='transparent'))+
+  annotate("text", x=6.9, y=7.8, label= "IFI27")+
+  annotate("text", x=5.8, y=11.7, label= "IGHG1") +
+  annotate("text", x=5.7, y=10.5, label= "IGHG1-24") + 
+  annotate("text", x=5.5, y=4.3, label= "ALAS2") + 
+  annotate("text", x=5.2, y=2.9, label= "HBB") + 
+  annotate("text", x=-1.0, y=11.4, label= "CACNA2D3") + 
+  annotate("text", x=-1.5, y=7.4, label= "UICLM") + 
+  annotate("text", x=-1.45, y=5.2, label= "HLA-DQB2") + 
+  annotate("text", x=-1.4, y= 4.0, label= "HLA-DQA1") 
+
+
+#display boxplot
+p1
+```
+
+```{r FRC5xx}
+ggsave('figures/volcanoplot1.png', p1, dpi = 300, bg='transparent')
+```
+
+
+```{r FRC6}
+# add a grouping column; default value is "not significant"
+
+diff_df<-diseased_vs_healthy
+colnames(diff_df)<-c("geneid","foldchange","adjpval","genetype")
+diff_df["group"] <- "NotSignificant"
+
+# for our plot, we want to highlight 
+# FDR < 0.05 (significance level)
+# Fold Change > 1.5
+
+# change the grouping for the entries with significance but not a large enough Fold change
+diff_df[which(diff_df['adjpval'] < 0.05 & abs(diff_df['foldchange']) < 1.5 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough Fold change but not a low enough p value
+diff_df[which(diff_df['adjpval'] > 0.05 & abs(diff_df['foldchange']) > 1.5 ),"group"] <- "FoldChange"
+
+# change the grouping for the entries with both significance and large enough fold change
+diff_df[which(diff_df['adjpval'] < 0.05 & abs(diff_df['foldchange']) > 1.5 ),"group"] <- "Significant&FoldChange"
+
+
+# Find and label the top peaks..
+top_peaks <- diff_df[with(diff_df, order(foldchange, adjpval)),][1:5,]
+top_peaks <- rbind(top_peaks, diff_df[with(diff_df, order(-foldchange, adjpval)),][1:5,])
+
+# Add gene labels for all of the top genes we found
+# here we are creating an empty list, and filling it with entries for each row in the dataframe
+# each list entry is another list with named items that will be used by Plot.ly
+a <- list()
+for (i in seq_len(nrow(top_peaks))) {
+  m <- top_peaks[i, ]
+  a[[i]] <- list(
+    x = m[["foldchange"]],
+    y = -log10(m[["adjpval"]]),
+    text = m[["geneid"]],
+    xref = "x",
+    yref = "y",
+    showarrow = TRUE,
+    arrowhead = 0.5,
+    ax = 20,
+    ay = -40
+  )
+}
+
+```
+
+
+```{r FRC7, eval=FALSE, out.width="100%"}
+# make the Plot.ly plot
+p <- plot_ly(data = diff_df, x=~foldchange, y=~-log10(adjpval), text = ~geneid, mode = "markers", color = ~group, xaxis=~c(-7, 7)) %>%  layout(title ="") %>% layout(annotations = a) %>% layout(xaxis = list(range=c(-7,7) )) 
+ 
+p
+```
+
 
 #### Perfiles de expresión
 
@@ -582,7 +787,7 @@ ggsave("figures/dotplot_transp.png", width=14, height=9, dpi=300, bg = "transpar
 p
 ```
 
-```{r viewEnrichment3}
+```{r viewEnrichment3, out.width="100%"}
 library(clusterProfiler)
 library(ggplot2)
 ego2 = clusterProfiler::simplify(ego, cutoff = 0.5, by = "p.adjust")
@@ -595,17 +800,17 @@ invisible(dev.off())
 a
 ```
 
-```{r viewEnrichment4}
+```{r viewEnrichment4, out.width="100%"}
 library(enrichplot)
 goplot(ego2, showCategory=6, cex=0.1)
 ```
 
-```{r viewEnrichment5}
+```{r viewEnrichment5, out.width="100%"}
 heatplot(ego2)
 ```
 
 
-```{r viewEnrichment6}
+```{r viewEnrichment6, out.width="100%"}
 term_similarity_matrix = pairwise_termsim(ego)
 emapplot(term_similarity_matrix, showCategory = 15, group_category=TRUE, group_legend=TRUE)
 ```
