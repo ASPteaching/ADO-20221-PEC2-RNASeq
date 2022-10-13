@@ -82,8 +82,8 @@ niceMDS <- function (aDGEObj){
           legend.position = "bottom",
           axis.title = element_text(face='bold',size=30),
           legend.text=element_text(family='fontawesome-webfont'),
-          panel.background = element_rect(fill = "transparent"),            # bg of the panel
-          plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+          # panel.background = element_rect(fill = "transparent"),            # bg of the panel
+          # plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
           legend.key.size = unit(x = 0.01,units = "cm"),
           legend.background = element_rect(fill = "transparent"),           # get rid of legend bg
           legend.box.background = element_rect(fill = "transparent"),
