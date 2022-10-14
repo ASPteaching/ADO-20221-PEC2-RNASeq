@@ -37,12 +37,12 @@ niceBoxPlot <- function (aCPMObj){
                 each=nrow(aCPMObj))))
   gg1 <- ggplot(d,aes(x,y,fill=co)) + geom_boxplot() +
     xlab('') + ylab(expression(bold('Normalized'~'counts'~(log[2])))) +
-    theme(axis.text.x = element_text(angle=90,face='bold',vjust = 0.5, size=13),
-          axis.text.y = element_text(size=13),
-          axis.title.y = element_text(size=15),
-          axis.title = element_text(face='bold'),
+    theme(axis.text.x = element_text(angle=90,face='bold',vjust = 0.5, size=20),
+          axis.text.y = element_text(size=20),
+          axis.title = element_text(face='bold',size=30),
+          panel.grid = element_line(color = "grey"),
           legend.title = element_blank(),
-          legend.text = element_text(size=13),
+          legend.text = element_text(size=20),
           legend.position = 'bottom',
           plot.background = element_rect(fill = "transparent", color = NA),
           panel.background = element_rect(fill = "transparent"),

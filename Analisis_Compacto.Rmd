@@ -281,8 +281,8 @@ boxplot(log2count_norm, col=dgeObj_norm$samples$cols,
 ```
 
 ```{r niceBoxPlot, warning=FALSE, out.width="100%"}
-source("Rcode/niceBoxPlot.R")
-gg1 <- niceBoxPlot(log2count_norm)
+source("Rcode/niceBoxPlot.R")    
+gg1 <- niceBoxPlot(log2count_norm) 
 ggsave(filename = 'figures/boxplot.png',gg1,bg = "transparent") # ,dpi = 300
 gg1
 ```
@@ -290,7 +290,7 @@ gg1
 También se puede hacer usando plotly.
 
 ```{r niceBoxPlotly, warning=FALSE, out.width="100%"}
-niceBoxPlotly(log2count_norm)
+niceBoxPlotly(log2count_norm)  
 ```
 
 **Esta será nuestra matriz de partida para los análisis siguientes**
@@ -347,7 +347,7 @@ plot(hc,labels = colnames(log2count_norm),main = "Agrpamiento jerárquico de las
 El siguiente es un gráfico mejor.
 
 ```{r  niceDendrogram, out.width="100%"}
-source("Rcode/niceDendrogram.R")
+source("Rcode/niceDendrogram.R")  
 library("ggdendro", "dendextend")
 hc <- hclust(sampleDists,method = 'ward.D2')
 gg2 <- niceDendrogram (hc)
@@ -368,7 +368,7 @@ plotMDS(log2count_norm,col=col.status, main="Status", cex=0.7)
 Con el paquete [emojifont](https://cran.r-project.org/web/packages/emojifont/vignettes/emojifont.html) se pueden usar emoticonos para distinguir los pacientes sanos de los que tienen COVID.
 
 ```{r niceMDS1, out.width="100%"}
-source("Rcode/niceMDS.R")
+source("Rcode/niceMDS.R")   
 gg3 <- niceMDS(dgeObj_norm)  
 ggplot2::ggsave('figures/MDS_emotis.png',gg3) # ,dpi=300, bg = "transparent"
 gg3
@@ -442,7 +442,7 @@ volcanoplot(fit.cont,coef=1,highlight=100, main="COVID vs SANO")
 Es posible también crear Volcanoplots interactivos
 
 ```{r niceInteractiveVolcano}
-source("Rcode/niceInteractiveVolcano.R")
+source("Rcode/niceInteractiveVolcano.R") 
 niceInteractiveVolcano(fit.cont)
 
 ```
@@ -645,7 +645,7 @@ dev.off()
 También es posible crear un Heatmap interactivo:
 
 ```{r niceInteractiveHeatMap}
-source("Rcode/niceInteractiveHeatMap.R")
+source("Rcode/niceInteractiveHeatMap.R") 
 mat  <- log2count_norm[topGenesBas, ]
 mat  <- mat - rowMeans(mat)
 niceInteractiveHeatMap(mat)

@@ -82,12 +82,13 @@ niceMDS <- function (aDGEObj){
           legend.position = "bottom",
           axis.title = element_text(face='bold',size=30),
           legend.text=element_text(family='fontawesome-webfont'),
-          # panel.background = element_rect(fill = "transparent"),            # bg of the panel
-          # plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
+          panel.grid = element_line(color = "grey"),# ,size = 0.75,linetype = 2)
+          panel.background = element_rect(fill = "transparent"),            # bg of the panel
+          plot.background = element_rect(fill = "transparent", color = NA), # bg of the plot
           legend.key.size = unit(x = 0.01,units = "cm"),
           legend.background = element_rect(fill = "transparent"),           # get rid of legend bg
           legend.box.background = element_rect(fill = "transparent"),
-          axis.text = element_text(size=25)
+          axis.text = element_text(size=20)
     ) + guides(color="none")
   ggarrange(gg4_2, nrow=1) 
 }
