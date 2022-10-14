@@ -30,7 +30,7 @@ niceDendrogram <- function (hcObj){
   dend_data$labels$color <- ifelse(grepl('COV',dend_data$labels$label),'COVID','HEALTHY')
   head(dend_data$segments)
   gg2 <- ggplot(dend_data$segments) + 
-    geom_segment(aes(x = x, y = y, xend = xend, yend = yend),size=1.2)+
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend),size=1.2, color='darkgreen')+
     geom_text(data = dend_data$labels, aes(x, y-1, label = label,color=color,fontface='bold'),
               hjust = 1, angle = 90, size = 8)+
     ylim(-20, 150) + ylab('Dissimilarity') + xlab('') +

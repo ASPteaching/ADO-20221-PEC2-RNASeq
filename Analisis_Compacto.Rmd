@@ -347,7 +347,7 @@ plot(hc,labels = colnames(log2count_norm),main = "Agrpamiento jerárquico de las
 El siguiente es un gráfico mejor.
 
 ```{r  niceDendrogram, out.width="100%"}
-source("Rcode/niceDendrogram.R")  
+source("Rcode/niceDendrogram.R")
 library("ggdendro", "dendextend")
 hc <- hclust(sampleDists,method = 'ward.D2')
 gg2 <- niceDendrogram (hc)
