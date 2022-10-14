@@ -4,7 +4,7 @@
 
 This repository contains a simplified analysis of RNA-Seq data with R and Bioconductor. The objective is to show a workflow in a simple way that can serve as the basis for an infographic that will be made with the [GRBio](http://grbio.upc.edu) group.
 
-Some graphics than you can see in the [infographics](https://www.canva.com/design/DAFDMgmnNBw/ArYoC2fGU1OAQYMg_X0jAA/edit?utm_content=DAFDMgmnNBw&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton) are below.
+Some graphics than you can see in the [infographics](https://zenodo.org/record/7195043#.Y0mV-HZBy71) are below.
 
 ## Quality control &  Exploration
 
