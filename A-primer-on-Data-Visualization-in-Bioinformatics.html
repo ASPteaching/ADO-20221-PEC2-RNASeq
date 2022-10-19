@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>A primer on Data Visualization in Bioinformatics</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Mireia Besalú; Ferran Briansó; Erik Cobo; Jordi Cortés; Ferran Reverter; Alex Sànchez; Esteban Vegas" />
+    <meta name="date" content="2022-10-19" />
+    <script src="libs/header-attrs/header-attrs.js"></script>
+    <link href="libs/remark-css/default.css" rel="stylesheet" />
+    <link href="libs/remark-css/metropolis.css" rel="stylesheet" />
+    <link href="libs/remark-css/metropolis-fonts.css" rel="stylesheet" />
+    <link rel="stylesheet" href="mycss.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+.title[
+# A primer on Data Visualization in Bioinformatics
+]
+.author[
+### Mireia Besalú; Ferran Briansó; Erik Cobo; Jordi Cortés; Ferran Reverter; Alex Sànchez; Esteban Vegas
+]
+.date[
+### 2022-10-19
+]
+
+---
+
+
+&lt;style type="text/css"&gt;
+.remark-slide-content {
+    font-size: 25px;
+    padding: 1em 2em 1em 2em;
+}
+.left-code {
+  color: #777;
+  width: 38%;
+  height: 92%;
+  float: left;
+}
+.right-plot {
+  width: 60%;
+  float: right;
+  padding-left: 1%;
+}
+&lt;/style&gt;
+
+
+
+# Outline
+
+.columnwide[
+  ### 1) [Introduction and motivation](#Introduction)
+  ### 2) [Data acquisition](#DataAcquisition)
+  ### 3) [QC and Data Explorartion](#QCExploration)
+  ### 4) [Gene Selection](#geneSelection)
+  ### 5) [Biological Interpretation](#Interpretation)
+  ### 6) [Summary](#Summary)
+  ### 7) [References and Resources](#References)
+]
+
+---
+
+class: inverse, middle, center
+
+name: Introduction
+
+# Introduction and motivation
+
+---
+
+# Finding COVID-related genes
+
+- Biological information is contained in genes. 
+- Genes (DNA) express themselves by transcribing their sequence into RNA fragments (transcripts). 
+- Knowing which genes express differently between healthy people and COVID patients can help us to understand and cure the disease.
+
+- We introduce some visualizations used in the search for those genes. 
+- This is done by sequencing blood samples and comparing the abundance of RNA transcripts in each group: "more expression, more abundance".
+
+---
+
+class: inverse, middle, center
+
+name: DataAcquisition
+
+# Data Acquisition
+
+---
+# Data acquisition
+
+&lt;img src="images/dataAcquisition.png" width="792" /&gt;
+
+---
+
+# The data for the analysis
+
+- From each blood sample, RNA is extracted and prepared to be sequenced, a process that yields a large number of copies of each RNA fragment.
+- Sequenced transcripts are aligned to a reference genome to know which gene is expressing each transcript. It is like reconstructing a puzzle.
+- Gene expression is quantified by counting the numberof fragments aligned with each gene.
+- This is summarized in the counts' matrix, with one row per gene and one column per sample.
+
+---
+
+class: inverse, middle, center
+
+name: QCExploration
+
+# QC and Data Explorartion
+
+
+---
+
+# Plots for quality checking
+
+_How can we know if the data generation/acquisition process has worked well_?: **Not a trivial answer**
+
+.pull-left[
+&lt;img src="figures/MDS_emotis.png" width="2800" /&gt;
+]
+
+.pull-right[
+&lt;img src="figures/dendograma.png" width="2800" /&gt;
+]
+
+- Ideally, one might expect that samples tend to be more similar within groups than between groups. 
+
+- Distinct techniques such as PCA or Hierarchical clustering are used to check this assumption.
+
+
+---
+
+class: inverse, middle, center
+
+name: geneSelection
+
+# Gene Selection
+
+---
+# Gene selection
+
+.pull-left[
+&lt;img src="figures/vp2.png" width="3657" /&gt;
+&lt;small&gt;
+- A statistical test allows selecting significant differentially expressed genes. 
+- The *volcano plot* shows statistical versus biological significance
+&lt;/small&gt;
+]
+
+.pull-right[
+&lt;img src="figures/pheatmap_transp.png" width="24000" /&gt;
+&lt;small&gt;
+- *Heatmap* displays the expressions of selected genes in a grid. 
+- The color scale:intensity of gene expression. 
+  &lt;/small&gt;
+]
+
+---
+
+class: inverse, middle, center
+
+name: Interpretation
+
+# Biological Interpretation
+
+---
+
+# Interpreting the results
+
+- Genes are annotated in different knowledge databases by terms or categories describing their biological role. 
+
+- The distribution of annotations of selected genes is compared with the distribution of the same annotations in the genome. This allows determining which biological processes might be associated with our gene list.
+
+- We end up linking those differentially expressed genes that are included in the most represented biological categories using a network plot (bottom left-hand figure
+
+---
+#  Plots to guide interpretation
+
+.pull-left[
+&lt;img src="figures/dotplot_transp.png" width="5600" /&gt;
+]
+
+.pull-right[
+&lt;img src="figures/cnetplot_transp.png" width="19200" /&gt;
+]
+---
+
+class: inverse, middle, center
+
+name: summary
+
+# Summary
+
+---
+
+# In summary
+
+- Genes that _express_ differently between biological conditions can be useful to characterize the difference between them.
+
+- Gene expression can be quantified  using high throughput sequencing.
+
+- Expression differences between conditions can be established using statistical and bioinformatic methods.
+
+- General and specialized tools are useful to visualize data, results and and to guide biological interpretation.
+
+---
+
+class: inverse, middle, center
+
+name: References
+
+# References and Resources
+
+---
+
+# References
+
+- Analyses based on data from: Arunachalam et al. _Systems biological assessment of immunity to mild versus severe COVID-19 infection in humans_ .Science. 2020 Sep 4;369(6508):1210-20. doi: 10.1126/science.abc6261.
+
+- Inphography available at: https://zenodo.org/record/7195043#.Y1AvyNJByRS
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": true
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// add `data-at-shortcutkeys` attribute to <body> to resolve conflicts with JAWS
+// screen reader (see PR #262)
+(function(d) {
+  let res = {};
+  d.querySelectorAll('.remark-help-content table tr').forEach(tr => {
+    const t = tr.querySelector('td:nth-child(2)').innerText;
+    tr.querySelectorAll('td:first-child .key').forEach(key => {
+      const k = key.innerText;
+      if (/^[a-z]$/.test(k)) res[k] = t;  // must be a single letter (key)
+    });
+  });
+  d.body.setAttribute('data-at-shortcutkeys', JSON.stringify(res));
+})(document);
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>

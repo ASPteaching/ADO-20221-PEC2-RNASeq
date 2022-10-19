@@ -1,0 +1,169 @@
+---
+title: "Análisis de datos ómicos <br>El análisis de microarrays"
+author: "Alex Sánchez-Pla"
+institute: "Departamento de Genética, Microbiología y Estadística (UB) <br> Unidad de Estadística y Bioinformática (VHIR)"
+date: "Versión `r Sys.Date()`"
+output:
+  xaringan::moon_reader:
+    css: [default, metropolis, metropolis-fonts,"mycss.css"]
+    lib_dir: libs
+    nature:
+      highlightStyle: github
+      highlightLines: true
+      countIncrementalSlides: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Presentación
+
+- En esta actividad se presenta con cierto detalle una de las técnicas más conocidas y utilizadas para el análisis masivo de la expresión génica: el _Análisis de Microarrays_.
+
+- Para ello presentaremos con cierto detalle las distintas fases del proceso de análisis, centrándonos en los microarrays.
+  - Exploración.
+  - Preprocesado y Normalización.
+  - Selección de genes diferencialmente expresados.
+  - Análisis de significación biológica.
+
+- Aunque los microarrays son una técnica consolidada (algunos dirían "desfasada")
+<!-- De hecho, dada la gran velocidad a la que avanza la bioinformática, hay quien diría que se trata de una tecnología desfasada -aunque también podemos describirla como "asentada", pero  -->
+conviene recordar que en esta actividad presentamos un _ejemplo prototípico_ de análisis de datos ómicos y esto se puede hacer, igual de bien o mejor, con una técnica bien establecida que con la última novedad, que puede todavía estar expuesta a cambios.
+
+
+
+<!-- - En este vídeo veremos una perspectiva general de la actividad -->
+<!--   - Los objetivos y competencias a adquirir -->
+<!--   - Los contenidos del tema -->
+<!--   - Qué debates o ejercicios prácticos se realizaran -->
+<!--   - De qué recursos disponéis para llevarla a cabo. -->
+
+---
+
+# Conocimientos previos
+
+-   En esta unidad asumimos que ya estáis familiarizadas con el proceso de análisis ómicos y, sobretodo, con la herramienta principal de este curso: Bioconductor (R lo damos por sentado ;-)).
+
+-   La selección de genes se basa en conceptos de inferencia estadística y modelos lineales, por lo que es conveniente una buena base de ambos temas, especialmente temas como _significación estadística_ o *ajuste de p-valores*. También utilizaremos conceptos de modelos lineales como matriz de diseño o de contrastes.
+
+- Unos conocimientos básicos de análisis multivariante -Análisis de conglomerados ("clustering") y Análisis de Componentes Principales ("PCA") os serán de gran utilidad para entender bien la exploración de los datos.
+---
+
+# Objetivos y competencias
+
+- Saber como abordar un análisis de datos ómicos, específicamente de microarrays.
+
+- Conocer cada una de las etapas del proceso entendiendo
+  - cual es la información de entrada y de salida de en cada caso.
+  - como encadenar las distintas etapas formando un _pipeline_ de análisis básico.
+
+- Conocer y comprender los conceptos estadísticos, biológicos y bioinformáticos que subyacentes en los análisis.
+
+- Saber como llevar a cabo cada paso del proceso usando R y Bioconductor.
+
+- Saber como realizar un informe del análisis, que sea reproducible, usando Rmarkdown.
+
+---
+
+# En 5' (1): La exploración de los datos
+
+```{r, out.width = "90%", fig.align='center', echo=FALSE}
+knitr::include_graphics("images/shortExploratoryAnalysis.png")
+```
+
+---
+
+# En 5' (2): El preprocesado
+
+```{r, out.width = "90%", fig.align='center', echo=FALSE}
+knitr::include_graphics("images/shortNormalization.png")
+```
+
+---
+
+# En 5' (3a): La selección de genes
+
+```{r, out.width = "90%", fig.align='center', echo=FALSE}
+knitr::include_graphics("images/shortDifferentialExpression.png")
+```
+
+---
+
+# En 5' (3b): El ajuste de p-valores
+
+```{r, out.width = "90%", fig.align='center', echo=FALSE}
+knitr::include_graphics("images/shortAdjustedPValues.png")
+```
+
+---
+
+# En 5' (3c): Modelos lineales
+
+```{r, out.width = "90%", fig.align='center', echo=FALSE}
+knitr::include_graphics("images/shortLinearModels.png")
+```
+
+---
+
+# Materiales de estudio
+
+-   Esta se basa en los capítulos 3 y 4 de los materiales de análisis de microarrays disponibles en el aula.
+
+  - 3: Exploración, Control de calidad (QC) y Preprocesado (Normalización) de los datos") y 
+  - 4: Selección de Genes Diferencialmente Expresados (DEG)
+  
+- El caso de uso presentado anteriormente es una ilustración complementaria en la que se aplican los métodos presentados. 
+
+  - Podéis acceder a éste directamente mediante el siguiente enlace:
+ [https://aspteaching.github.io/Omics_Data_Analysis-Case_Study_1-Microarrays/Case_Study_1-Microarrays_Analysis.html]( https://aspteaching.github.io/Omics_Data_Analysis-Case_Study_1-Microarrays/Case_Study_1-Microarrays_Analysis.html)
+ 
+  - O bien clonar el repositorio entero desde este otro enlace:
+  [https://github.com/ASPteaching/Omics_Data_Analysis-Case_Study_1-Microarrays](https://github.com/ASPteaching/Omics_Data_Analysis-Case_Study_1-Microarrays)
+    
+---
+
+# Caso de uso.
+
+- En este estudio, queremos verificar el efecto de eliminar el gen regulador de la temperatura ("KO vs WT") y ver los efectos de esta eliminación en condiciones de temperatura ambiente o cuando la temperatura es inferior ("frío"). 
+
+- Para ello, a partir de un experimento con microarrays que nos proporciona los datos crudos ...
+  - Se leen los datos (previamente descargados a un directorio local).
+  - Se lleva a cabo un análisis exploratorio,
+  - Se normalizan los datos,
+  - Se construye el modelo lineal y los contrastes para cada comparación,
+  - Se aplica el modelo y se obtiene la tabla de genes diferencialmente expresados
+
+---
+
+# Caso de uso (2): Código "comprimido"
+
+```{r eval=FALSE, echo=TRUE}
+library(Biobase); library(oligo)
+my.targets <-read.AnnotatedDataFrame("targets.csv", header = TRUE, row.names = 1, sep=";") 
+rawData <- read.celfiles(celFiles, phenoData = my.targets)
+library(arrayQualityMetrics); arrayQualityMetrics(rawData)
+eset_rma <- rma(rawData)
+library(genefilter); library(mogene21sttranscriptcluster.db)
+annotation(eset_rma) <- "mogene21sttranscriptcluster.db"
+filtered <- nsFilter(eset_rma)
+library(limma)
+designMat<- model.matrix(~0+Group, pData(eset_filtered))
+colnames(designMat) <- c("KO.COLD", "KO.RT", "WT.COLD", "WT.RT")
+cont.matrix <- makeContrasts (KOvsWT.COLD = KO.COLD-WT.COLD, KOvsWT.RT = KO.RT-WT.RT, 
+                              INT = (KO.COLD-WT.COLD) - (KO.RT-WT.RT), levels=designMat)
+fit<-lmFit(eset_filtered, designMat)
+fit.main<-contrasts.fit(fit, cont.matrix)
+fit.main<-eBayes(fit.main)
+topTab_KOvsWT.COLD <- topTable (fit.main, number=nrow(fit.main), coef="KOvsWT.COLD", adjust="fdr") 
+```
+
+---
+
+# Debates
+
+- En esta actividad se realiza un debate que os permitirá poner en práctica los conceptos adquiridos y discutir las dudas que os surjan.
+
+- Como en otros debates se busca promover la participación, y, para motivarla, ésta se evaluará y tendrá un peso en la evaluación final, tal como se indica en el plan docente.
